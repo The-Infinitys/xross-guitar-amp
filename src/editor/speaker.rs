@@ -143,7 +143,7 @@ impl<'a> SpeakerVisualizer<'a> {
             ui,
             center,
             width / 5.0,
-            self.params.mic_a_axis.value(),
+            -self.params.mic_a_axis.value(),
             self.params.mic_a_distance.value(),
             Color32::from_rgb(0, 180, 255),
         );
@@ -153,7 +153,7 @@ impl<'a> SpeakerVisualizer<'a> {
             ui,
             center,
             width / 5.0,
-            -self.params.mic_b_axis.value(),
+            self.params.mic_b_axis.value(),
             self.params.mic_b_distance.value(),
             Color32::from_rgb(255, 100, 0),
         );

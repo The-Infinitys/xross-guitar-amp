@@ -120,12 +120,12 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Option<Box<dyn Editor
                                             ];
                                             let mic_data = [
                                                 (
-                                                    "MIC A (Condenser)",
+                                                    "MIC A (Left)",
                                                     &params.cab_section.mic_a_axis,
                                                     &params.cab_section.mic_a_distance,
                                                 ),
                                                 (
-                                                    "MIC B (Dynamic)",
+                                                    "MIC B (Right)",
                                                     &params.cab_section.mic_b_axis,
                                                     &params.cab_section.mic_b_distance,
                                                 ),

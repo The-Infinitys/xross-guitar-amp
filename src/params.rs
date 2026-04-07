@@ -52,7 +52,7 @@ impl Default for GainParams {
                 2.0,
                 FloatRange::Linear {
                     min: 0.0,
-                    max: 20.0,
+                    max: 24.0,
                 },
             )
             .with_unit(" dB")
@@ -94,57 +94,23 @@ pub struct EqParams {
 
 impl Default for EqParams {
     fn default() -> Self {
+        let db = 18.0;
         Self {
-            low: FloatParam::new(
-                "Low",
-                0.0,
-                FloatRange::Linear {
-                    min: -12.0,
-                    max: 12.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
-            mid: FloatParam::new(
-                "Mid",
-                0.0,
-                FloatRange::Linear {
-                    min: -12.0,
-                    max: 12.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
-            high: FloatParam::new(
-                "High",
-                0.0,
-                FloatRange::Linear {
-                    min: -12.0,
-                    max: 12.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
-            presence: FloatParam::new(
-                "Presence",
-                0.0,
-                FloatRange::Linear {
-                    min: 0.0,
-                    max: 12.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
-            resonance: FloatParam::new(
-                "Resonance",
-                0.0,
-                FloatRange::Linear {
-                    min: 0.0,
-                    max: 12.0,
-                },
-            )
-            .with_unit(" dB")
-            .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
+            low: FloatParam::new("Low", 0.0, FloatRange::Linear { min: -db, max: db })
+                .with_unit(" dB")
+                .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
+            mid: FloatParam::new("Mid", 0.0, FloatRange::Linear { min: -db, max: db })
+                .with_unit(" dB")
+                .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
+            high: FloatParam::new("High", 0.0, FloatRange::Linear { min: -db, max: db })
+                .with_unit(" dB")
+                .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
+            presence: FloatParam::new("Presence", 0.0, FloatRange::Linear { min: 0.0, max: db })
+                .with_unit(" dB")
+                .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
+            resonance: FloatParam::new("Resonance", 0.0, FloatRange::Linear { min: 0.0, max: db })
+                .with_unit(" dB")
+                .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
         }
     }
 }
