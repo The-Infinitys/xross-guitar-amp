@@ -45,12 +45,14 @@ impl Plugin for XrossGuitarAmp {
         self.initialize(audio_io_layout, buffer_config, context)
     }
 
-    fn reset(&mut self) {}
+    fn reset(&mut self) {
+        self.reset();
+    }
 
     fn deactivate(&mut self) {}
 
     const AUDIO_IO_LAYOUTS: &'static [nih_plug::prelude::AudioIOLayout] = &[AudioIOLayout {
-        main_input_channels: NonZeroU32::new(2),
+        main_input_channels: NonZeroU32::new(1),
         main_output_channels: NonZeroU32::new(2),
         ..AudioIOLayout::const_default()
     }];

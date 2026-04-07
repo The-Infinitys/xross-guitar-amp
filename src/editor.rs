@@ -141,12 +141,12 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Option<Box<dyn Editor
                                                             .strong(),
                                                     );
                                                     ui.add(LinearSlider::new(
-                                                        *axis,
+                                                        axis,
                                                         setter,
                                                         mic_colors[i],
                                                     ));
                                                     ui.add(LinearSlider::new(
-                                                        *dist,
+                                                        dist,
                                                         setter,
                                                         mic_colors[i],
                                                     ));

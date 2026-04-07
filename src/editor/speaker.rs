@@ -54,7 +54,7 @@ impl<'a> SpeakerVisualizer<'a> {
                 );
             }
         }
-        let count = self.params.speaker_count.value() as i32; // --- レイアウト計算 ---
+        let count = self.params.speaker_count.value(); // --- レイアウト計算 ---
         // 1: 1x1, 2: 2x1, 4: 2x2
         let mut positions = Vec::new();
         let max_speaker_radius = match self.params.speaker_size.range() {

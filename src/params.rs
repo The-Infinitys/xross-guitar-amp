@@ -2,7 +2,7 @@ use nih_plug::params::{FloatParam, IntParam, Params};
 use nih_plug::prelude::*;
 use std::sync::Arc;
 
-#[derive(Params)]
+#[derive(Params, Default)]
 pub struct XrossGuitarAmpParams {
     /// 1. ゲインセクション
     #[nested(group = "Gain Section", id_prefix = "gain_")]
@@ -49,23 +49,23 @@ impl Default for GainParams {
             .with_value_to_string(Arc::new(|x| format!("{:.1}", x))),
             drive: FloatParam::new(
                 "Drive",
-                20.0,
+                2.0,
                 FloatRange::Linear {
                     min: 0.0,
-                    max: 60.0,
+                    max: 20.0,
                 },
             )
             .with_unit(" dB")
             .with_value_to_string(Arc::new(|x| format!("{:.0}", x))),
             distortion: FloatParam::new(
                 "Distortion",
-                0.5,
+                0.25,
                 FloatRange::Linear { min: 0.0, max: 1.0 },
             )
             .with_value_to_string(Arc::new(|x| format!("{:.2}", x))),
             master_gain: FloatParam::new(
                 "Master",
-                -6.0,
+                -12.0,
                 FloatRange::Linear {
                     min: -60.0,
                     max: 0.0,
@@ -270,13 +270,3 @@ impl Default for EffectsParams {
 }
 
 // --- Main Implementation ---
-impl Default for XrossGuitarAmpParams {
-    fn default() -> Self {
-        Self {
-            gain_section: GainParams::default(),
-            eq_section: EqParams::default(),
-            cab_section: CabParams::default(),
-            fx_section: EffectsParams::default(),
-        }
-    }
-}
