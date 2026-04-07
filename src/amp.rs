@@ -9,12 +9,15 @@ pub struct XrossGuitarAmp {
     pub params: Arc<XrossGuitarAmpParams>,
 }
 impl XrossGuitarAmp {
-    fn process(
+    pub fn process(
         &mut self,
         buffer: &mut Buffer,
         aux: &mut AuxiliaryBuffers,
         context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         ProcessStatus::Normal
+    }
+    pub fn params(&self) -> Arc<XrossGuitarAmpParams> {
+        self.params.clone()
     }
 }

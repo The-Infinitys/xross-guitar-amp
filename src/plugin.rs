@@ -2,6 +2,7 @@ use nih_plug::plugin::Plugin;
 use nih_plug::prelude::*;
 
 use crate::XrossGuitarAmp;
+use crate::editor::create_editor;
 
 impl Plugin for XrossGuitarAmp {
     const NAME: &'static str = "Xross Guitar Amp";
@@ -15,16 +16,7 @@ impl Plugin for XrossGuitarAmp {
     const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
     fn params(&self) -> std::sync::Arc<dyn nih_plug::prelude::Params> {
-        self.params.clone()
-    }
-
-    fn process(
-        &mut self,
-        buffer: &mut nih_plug::prelude::Buffer,
-        aux: &mut nih_plug::prelude::AuxiliaryBuffers,
-        context: &mut impl nih_plug::prelude::ProcessContext<Self>,
-    ) -> nih_plug::prelude::ProcessStatus {
-        self.process(buffer, aux, context)
+        self.params()
     }
 
     const MIDI_INPUT: MidiConfig = MidiConfig::None;
@@ -41,7 +33,7 @@ impl Plugin for XrossGuitarAmp {
     }
 
     fn editor(&mut self, async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        None
+        create_editor(self.params())
     }
 
     fn filter_state(state: &mut PluginState) {}
@@ -67,4 +59,13 @@ impl Plugin for XrossGuitarAmp {
     type SysExMessage = ();
 
     type BackgroundTask = ();
+
+    fn process(
+        &mut self,
+        buffer: &mut Buffer,
+        aux: &mut AuxiliaryBuffers,
+        context: &mut impl ProcessContext<Self>,
+    ) -> ProcessStatus {
+        self.process(buffer, aux, context)
+    }
 }
