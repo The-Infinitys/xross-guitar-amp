@@ -20,3 +20,4 @@ path = "src/bundle.rs"
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", features = ["standalone"] }
 nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug.git" }
 nih_plug_egui = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+egui_extras = { version = "0.31.1", features = ["svg", "image"] }

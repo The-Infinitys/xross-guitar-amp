@@ -17,6 +17,14 @@ impl XrossGuitarAmp {
     ) -> ProcessStatus {
         ProcessStatus::Normal
     }
+    pub fn initialize(
+        &mut self,
+        audio_io_layout: &AudioIOLayout,
+        buffer_config: &BufferConfig,
+        context: &mut impl InitContext<Self>,
+    ) -> bool {
+        true
+    }
     pub fn params(&self) -> Arc<XrossGuitarAmpParams> {
         self.params.clone()
     }

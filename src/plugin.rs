@@ -32,11 +32,9 @@ impl Plugin for XrossGuitarAmp {
         Box::new(|_| ())
     }
 
-    fn editor(&mut self, async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+    fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         create_editor(self.params())
     }
-
-    fn filter_state(state: &mut PluginState) {}
 
     fn initialize(
         &mut self,
@@ -44,7 +42,7 @@ impl Plugin for XrossGuitarAmp {
         buffer_config: &BufferConfig,
         context: &mut impl InitContext<Self>,
     ) -> bool {
-        true
+        self.initialize(audio_io_layout, buffer_config, context)
     }
 
     fn reset(&mut self) {}
