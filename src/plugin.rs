@@ -69,3 +69,33 @@ impl Plugin for XrossGuitarAmp {
         self.process(buffer, aux, context)
     }
 }
+
+impl Vst3Plugin for XrossGuitarAmp {
+    const VST3_CLASS_ID: [u8; 16] = *b"Xross Guitar Amp";
+
+    const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] = &[
+        Vst3SubCategory::Distortion,
+        Vst3SubCategory::Fx,
+        Vst3SubCategory::Custom("guitar"),
+    ];
+}
+impl ClapPlugin for XrossGuitarAmp {
+    const CLAP_ID: &'static str = "Xross Guitar Amp";
+
+    const CLAP_DESCRIPTION: Option<&'static str> = Some("Modern Guitar Amplifier");
+
+    const CLAP_MANUAL_URL: Option<&'static str> =
+        Some("https://github.com/The-Infinitys/xross-guitar-amp");
+
+    const CLAP_SUPPORT_URL: Option<&'static str> =
+        Some("https://github.com/The-Infinitys/xross-guitar-amp/issues");
+
+    const CLAP_FEATURES: &'static [ClapFeature] = &[
+        ClapFeature::AudioEffect,      // ← これを必ず追加（メイン）
+        ClapFeature::Distortion,       // 歪みアンプとして重要
+        ClapFeature::Custom("guitar"), // または "amp" / "guitar-amp"（ホストでわかりやすく）
+    ];
+}
+
+nih_export_clap!(XrossGuitarAmp);
+nih_export_vst3!(XrossGuitarAmp);
