@@ -1,0 +1,70 @@
+use nih_plug::plugin::Plugin;
+use nih_plug::prelude::*;
+
+use crate::XrossGuitarAmp;
+
+impl Plugin for XrossGuitarAmp {
+    const NAME: &'static str = "Xross Guitar Amp";
+
+    const VENDOR: &'static str = "The Infinitys";
+
+    const URL: &'static str = "https://github.com/The-Infinitys/xross-guitar-amp";
+
+    const EMAIL: &'static str = "the.infinity.s.infinity@gmail.com";
+
+    const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+    fn params(&self) -> std::sync::Arc<dyn nih_plug::prelude::Params> {
+        self.params.clone()
+    }
+
+    fn process(
+        &mut self,
+        buffer: &mut nih_plug::prelude::Buffer,
+        aux: &mut nih_plug::prelude::AuxiliaryBuffers,
+        context: &mut impl nih_plug::prelude::ProcessContext<Self>,
+    ) -> nih_plug::prelude::ProcessStatus {
+        self.process(buffer, aux, context)
+    }
+
+    const MIDI_INPUT: MidiConfig = MidiConfig::None;
+
+    const MIDI_OUTPUT: MidiConfig = MidiConfig::None;
+
+    const SAMPLE_ACCURATE_AUTOMATION: bool = false;
+
+    const HARD_REALTIME_ONLY: bool = false;
+
+    fn task_executor(&mut self) -> TaskExecutor<Self> {
+        // In the default implementation we can simply ignore the value
+        Box::new(|_| ())
+    }
+
+    fn editor(&mut self, async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
+        None
+    }
+
+    fn filter_state(state: &mut PluginState) {}
+
+    fn initialize(
+        &mut self,
+        audio_io_layout: &AudioIOLayout,
+        buffer_config: &BufferConfig,
+        context: &mut impl InitContext<Self>,
+    ) -> bool {
+        true
+    }
+
+    fn reset(&mut self) {}
+
+    fn deactivate(&mut self) {}
+
+    const AUDIO_IO_LAYOUTS: &'static [nih_plug::prelude::AudioIOLayout] = &[AudioIOLayout {
+        main_input_channels: NonZeroU32::new(2),
+        main_output_channels: NonZeroU32::new(2),
+        ..AudioIOLayout::const_default()
+    }];
+    type SysExMessage = ();
+
+    type BackgroundTask = ();
+}
