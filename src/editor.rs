@@ -187,7 +187,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Option<Box<dyn Editor
                                                         let btn =
                                                             egui::Button::new(count.to_string())
                                                                 .fill(if is_selected {
-                                                                    Color32::from_rgb(255, 180, 0)
+                                                                    Color32::from_rgb(0, 128, 0)
                                                                 } else {
                                                                     Color32::from_gray(60)
                                                                 })
