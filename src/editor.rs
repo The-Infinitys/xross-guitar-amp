@@ -53,8 +53,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Option<Box<dyn Editor
                             ui.horizontal_top(|ui| {
                                 ui.spacing_mut().item_spacing.x = 15.0;
 
-                                // PREAMP (4ノブ) - 幅比重 4
-                                draw_section_weighted(ui, "PREAMP", 4.0, |ui| {
+                                draw_section_weighted(ui, "GAIN", 4.0, |ui| {
                                     let p = &params.gain_section;
                                     ui.horizontal(|ui| {
                                         for k in
@@ -70,8 +69,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Option<Box<dyn Editor
                                     });
                                 });
 
-                                // EQ (5ノブ) - 幅比重 5
-                                draw_section_weighted(ui, "EQ", 5.0, |ui| {
+                                draw_section_weighted(ui, "EQUALIZER", 5.0, |ui| {
                                     let p = &params.eq_section;
                                     ui.horizontal(|ui| {
                                         for k in
@@ -87,8 +85,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Option<Box<dyn Editor
                                     });
                                 });
 
-                                // MASTER (3ノブ) - 幅比重 3
-                                draw_section_weighted(ui, "MASTER", 3.0, |ui| {
+                                draw_section_weighted(ui, "EFFECT", 3.0, |ui| {
                                     let p = &params.fx_section;
                                     ui.horizontal(|ui| {
                                         for k in [&p.sag, &p.tight, &p.reverb_mix] {
