@@ -37,7 +37,7 @@ impl XrossGuitarAmp {
         _context: &mut impl InitContext<Self>,
     ) -> bool {
         let sample_rate = buffer_config.sample_rate;
-        self.gain_proc.initialize(sample_rate);
+        self.gain_proc.reset();
         self.eq_proc.initialize(sample_rate);
         self.cab_proc.initialize(sample_rate);
         true
