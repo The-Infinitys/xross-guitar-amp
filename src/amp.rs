@@ -11,7 +11,7 @@ pub use gain::GainProcessor;
 
 use crate::params::XrossGuitarAmpParams;
 pub struct XrossGuitarAmp {
-    pub params: Arc<XrossGuitarAmpParams>,
+    params: Arc<XrossGuitarAmpParams>,
     gain_proc: GainProcessor,
     eq_proc: EqProcessor,
     cab_proc: CabProcessor,

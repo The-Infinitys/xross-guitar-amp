@@ -97,9 +97,14 @@ impl Biquad {
 
     #[inline]
     pub fn process(&mut self, input: f32) -> f32 {
-        let output = self.b0 * input + self.b1 * self.x1 + self.b2 * self.x2
+        let mut output = self.b0 * input + self.b1 * self.x1 + self.b2 * self.x2
             - self.a1 * self.y1
             - self.a2 * self.y2;
+
+        // デノーマル（極小値）対策
+        if output.abs() < 1e-18 {
+            output = 0.0;
+        }
 
         self.x2 = self.x1;
         self.x1 = input;
@@ -114,5 +119,9 @@ impl Biquad {
         self.x2 = 0.0;
         self.y1 = 0.0;
         self.y2 = 0.0;
+    }
+
+    pub fn set_sample_rate(&mut self, sample_rate: f32) {
+        self.sample_rate = sample_rate;
     }
 }

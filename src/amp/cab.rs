@@ -79,6 +79,21 @@ impl CabProcessor {
 
     pub fn initialize(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
+        // フィルタ群のサンプリングレートをすべて更新
+        for f in &mut self.mic_a_filters {
+            f.set_sample_rate(sample_rate);
+        }
+        for f in &mut self.mic_b_filters {
+            f.set_sample_rate(sample_rate);
+        }
+        for f in &mut self.cone_character {
+            f.set_sample_rate(sample_rate);
+        }
+        self.impedance_resonance.set_sample_rate(sample_rate);
+        self.presence_shelf.set_sample_rate(sample_rate);
+        self.cabinet_thump.set_sample_rate(sample_rate);
+        self.tight_filter.set_sample_rate(sample_rate);
+
         self.room_delay_buffer.resize(sample_rate as usize, 0.0);
         self.reverb_buffer.resize(sample_rate as usize, 0.0);
         self.reset();
@@ -101,6 +116,8 @@ impl CabProcessor {
         self.phase_delay_buffer_b.fill(0.0);
         self.room_delay_buffer.fill(0.0);
         self.reverb_buffer.fill(0.0);
+        // 次回のprocessで確実に係数を再計算させる
+        self.last_speaker_size = -1.0;
     }
 
     fn update_coefficients(&mut self) {

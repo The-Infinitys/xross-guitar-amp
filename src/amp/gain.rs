@@ -14,7 +14,11 @@ impl Biquad {
 
     #[inline]
     fn process(&mut self, input: f32, a1: f32, a2: f32, b0: f32, b1: f32, b2: f32) -> f32 {
-        let out = b0 * input + self.z1;
+        let mut out = b0 * input + self.z1;
+        // デノーマル対策
+        if out.abs() < 1e-18 {
+            out = 0.0;
+        }
         self.z1 = b1 * input - a1 * out + self.z2;
         self.z2 = b2 * input - a2 * out;
         out
@@ -26,6 +30,7 @@ pub struct GainProcessor {
     pre_hp: f32,
     slew_state: f32,
     dc_block: f32,
+    input_dc_block: f32,
     envelope: f32,
     prev_input: f32,
     low_resonance: f32,
@@ -42,6 +47,7 @@ impl GainProcessor {
             pre_hp: 0.0,
             slew_state: 0.0,
             dc_block: 0.0,
+            input_dc_block: 0.0,
             envelope: 0.0,
             prev_input: 0.0,
             low_resonance: 0.0,
@@ -61,12 +67,75 @@ impl GainProcessor {
         self.pre_hp = 0.0;
         self.slew_state = 0.0;
         self.dc_block = 0.0;
+        self.input_dc_block = 0.0;
         self.envelope = 0.0;
         self.prev_input = 0.0;
         self.low_resonance = 0.0;
         self.post_tight = 0.0;
         self.feedback_state = 0.0;
         self.os_lpf_biquad = Biquad::new();
+    }
+
+    pub fn process(&mut self, input: f32) -> f32 {
+        let input_gain_db = self.params.gain_section.input_gain.value();
+        let master_gain_db = self.params.gain_section.master_gain.value();
+        let drive = self.params.gain_section.drive.value();
+        let dist = self.params.gain_section.distortion.value();
+
+        // 0. Input DC Block (入力段でのオフセット除去)
+        let in_dc_fix = input - self.input_dc_block;
+        self.input_dc_block = input + 0.998 * (self.input_dc_block - input);
+
+        // EQ値を 0.0 ~ 1.0 に正規化 (-18dB ~ +18dB -> 0.0 ~ 1.0)
+        let s_low = (self.params.eq_section.low.value() + 18.0) / 36.0;
+        let s_mid = (self.params.eq_section.mid.value() + 18.0) / 36.0;
+        let s_high = (self.params.eq_section.high.value() + 18.0) / 36.0;
+
+        let sag = self.params.fx_section.sag.value();
+        let tight = self.params.fx_section.tight.value();
+
+        let input_gain = 10.0f32.powf(input_gain_db / 20.0);
+        let in_signal = in_dc_fix * input_gain * 1.3; // 初段への入りを強化
+
+        self.envelope += (in_signal.abs() - self.envelope) * 0.25;
+        let current_env = self.envelope;
+
+        let dynamic_gain = 1.0 - (current_env * sag * 0.45).min(0.5);
+
+        let os_factor = 4;
+        let mut output_sum = 0.0;
+        let inv_os = 1.0 / os_factor as f32;
+
+        for i in 0..os_factor {
+            let fraction = i as f32 * inv_os;
+            let sub_sample =
+                (self.prev_input + (in_signal - self.prev_input) * fraction) * dynamic_gain;
+            output_sum += self.drive_core(
+                sub_sample,
+                drive,
+                dist,
+                s_low,
+                s_mid,
+                s_high,
+                tight,
+                current_env,
+            );
+        }
+        self.prev_input = in_signal;
+
+        let raw_out = output_sum * inv_os;
+
+        // 2次フィルタ (Butterworth LPF)
+        let (a1, a2, b0, b1, b2) = self.calculate_biquad_lpf(18000.0);
+        let filtered_out = self.os_lpf_biquad.process(raw_out, a1, a2, b0, b1, b2);
+
+        // DC Block
+        let out = filtered_out;
+        let dc_fix = out - self.dc_block;
+        self.dc_block = out + 0.996 * (self.dc_block - out);
+
+        let master_gain = 10.0f32.powf(master_gain_db / 20.0);
+        dc_fix * 0.8 * master_gain
     }
 
     #[inline]
@@ -89,7 +158,11 @@ impl GainProcessor {
         let mut x = input - self.pre_hp;
 
         // 2. GAIN STAGING (Metal Hot-Rodded)
-        let noise_gate_scale = (env * 25.0).min(1.0).powf(1.1);
+        // ゲート閾値を設定し、低レベルの背景ノイズを完全にカットする
+        let gate_threshold = 0.005;
+        let gated_env = (env - gate_threshold).max(0.0) / (1.0 - gate_threshold);
+        let noise_gate_scale = (gated_env * 22.0).min(1.0).powf(1.2);
+
         // gain(drive)とdistの両方を歪み量に反映。ベース倍率を22.0まで強化。
         let drive_amt = ((drive * 8.0).exp() * 22.0) * (0.8 + dist * 1.5) * noise_gate_scale;
         x *= drive_amt;
@@ -137,64 +210,6 @@ impl GainProcessor {
         self.slew_state += diff.clamp(-max_step, max_step);
 
         self.slew_state
-    }
-
-    pub fn process(&mut self, input: f32) -> f32 {
-        let input_gain_db = self.params.gain_section.input_gain.value();
-        let master_gain_db = self.params.gain_section.master_gain.value();
-        let drive = self.params.gain_section.drive.value();
-        let dist = self.params.gain_section.distortion.value();
-
-        // EQ値を 0.0 ~ 1.0 に正規化 (-18dB ~ +18dB -> 0.0 ~ 1.0)
-        let s_low = (self.params.eq_section.low.value() + 18.0) / 36.0;
-        let s_mid = (self.params.eq_section.mid.value() + 18.0) / 36.0;
-        let s_high = (self.params.eq_section.high.value() + 18.0) / 36.0;
-
-        let sag = self.params.fx_section.sag.value();
-        let tight = self.params.fx_section.tight.value();
-
-        let input_gain = 10.0f32.powf(input_gain_db / 20.0);
-        let in_signal = input * input_gain * 1.3; // 初段への入りを強化
-
-        self.envelope += (in_signal.abs() - self.envelope) * 0.25;
-        let current_env = self.envelope;
-
-        let dynamic_gain = 1.0 - (current_env * sag * 0.45).min(0.5);
-
-        let os_factor = 4;
-        let mut output_sum = 0.0;
-        let inv_os = 1.0 / os_factor as f32;
-
-        for i in 0..os_factor {
-            let fraction = i as f32 * inv_os;
-            let sub_sample =
-                (self.prev_input + (in_signal - self.prev_input) * fraction) * dynamic_gain;
-            output_sum += self.drive_core(
-                sub_sample,
-                drive,
-                dist,
-                s_low,
-                s_mid,
-                s_high,
-                tight,
-                current_env,
-            );
-        }
-        self.prev_input = in_signal;
-
-        let raw_out = output_sum * inv_os;
-
-        // 2次フィルタ (Butterworth LPF)
-        let (a1, a2, b0, b1, b2) = self.calculate_biquad_lpf(18000.0);
-        let filtered_out = self.os_lpf_biquad.process(raw_out, a1, a2, b0, b1, b2);
-
-        // DC Block
-        let out = filtered_out;
-        let dc_fix = out - self.dc_block;
-        self.dc_block = out + 0.996 * (self.dc_block - out);
-
-        let master_gain = 10.0f32.powf(master_gain_db / 20.0);
-        dc_fix * 0.8 * master_gain
     }
 
     fn calculate_biquad_lpf(&self, cutoff: f32) -> (f32, f32, f32, f32, f32) {
