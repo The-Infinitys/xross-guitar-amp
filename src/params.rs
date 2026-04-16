@@ -57,7 +57,7 @@ impl Default for GainParams {
             .with_value_to_string(Arc::new(|x| format!("{:.2}", x))),
             master_gain: FloatParam::new(
                 "Master",
-                -12.0,
+                -6.0,
                 FloatRange::Linear {
                     min: -60.0,
                     max: 0.0,

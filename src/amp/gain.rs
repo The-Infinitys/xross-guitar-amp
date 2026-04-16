@@ -135,7 +135,7 @@ impl GainProcessor {
         self.dc_block = out + 0.996 * (self.dc_block - out);
 
         let master_gain = 10.0f32.powf(master_gain_db / 20.0);
-        dc_fix * 0.8 * master_gain
+        dc_fix * 0.25 * master_gain
     }
 
     #[inline]
