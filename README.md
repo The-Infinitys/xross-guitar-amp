@@ -46,8 +46,8 @@ Ensure you have [Rust](https://rustup.rs/) and [Cargo](https://doc.rust-lang.org
 git clone https://github.com/The-Infinitys/xross-guitar-amp.git
 cd xross-guitar-amp
 
-# Build the plugin (Standalone / VST3 / CLAP)
-cargo build --release
+# Install the plugin (Standalone / VST3 / CLAP)
+cargo truce install
 ```
 
 The resulting binaries will be located in `target/release/`.
