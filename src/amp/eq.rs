@@ -51,13 +51,11 @@ impl EqProcessor {
     }
 
     fn update_coefficients(&mut self) {
-        let eq_params = &self.params.eq_section;
-
-        let l = eq_params.low.value();
-        let m = eq_params.mid.value();
-        let h = eq_params.high.value();
-        let p = eq_params.presence.value();
-        let r = eq_params.resonance.value();
+        let l = self.params.low.value();
+        let m = self.params.mid.value();
+        let h = self.params.high.value();
+        let p = self.params.presence.value();
+        let r = self.params.resonance.value();
 
         // 変更があった場合のみ重いフィルタ係数計算を実行
         if (l - self.last_eq_values[0]).abs() > 0.01

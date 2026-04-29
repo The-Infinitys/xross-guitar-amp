@@ -37,7 +37,7 @@ pub struct CabProcessor {
 
     // --- キャッシュ ---
     last_speaker_size: f32,
-    last_speaker_count: i32,
+    last_speaker_count: i64,
     last_mic_params: [f32; 4],
     last_eq_extras: [f32; 2],
 }
@@ -107,17 +107,14 @@ impl CabProcessor {
     }
 
     fn update_coefficients(&mut self) {
-        let cab = &self.params.cab_section;
-        let eq = &self.params.eq_section;
-
-        let s_size = cab.speaker_size.value();
-        let s_count = cab.speaker_count.value();
-        let d_a = cab.mic_a_distance.value();
-        let a_a = cab.mic_a_axis.value();
-        let d_b = cab.mic_b_distance.value();
-        let a_b = cab.mic_b_axis.value();
-        let res_val = eq.resonance.value();
-        let pres_val = eq.presence.value();
+        let s_size = self.params.speaker_size.value();
+        let s_count = self.params.speaker_count.value();
+        let d_a = self.params.mic_a_distance.value();
+        let a_a = self.params.mic_a_axis.value();
+        let d_b = self.params.mic_b_distance.value();
+        let a_b = self.params.mic_b_axis.value();
+        let res_val = self.params.resonance.value();
+        let pres_val = self.params.presence.value();
 
         // 変更検知（閾値による判定）
         if (s_size - self.last_speaker_size).abs() > 0.001
@@ -242,8 +239,8 @@ impl CabProcessor {
 
         // 4. マイク間位相干渉 (Time Alignment)
         // 距離による微小な遅延差 (1ms ≒ 34cm)
-        let delay_a = self.params.cab_section.mic_a_distance.value() * 2.5;
-        let delay_b = self.params.cab_section.mic_b_distance.value() * 5.0;
+        let delay_a = self.params.mic_a_distance.value() * 2.5;
+        let delay_b = self.params.mic_b_distance.value() * 5.0;
         let diff_samples = (delay_b - delay_a).abs() * 0.001 * self.sample_rate;
 
         let delay_int = diff_samples as usize;
@@ -263,9 +260,9 @@ impl CabProcessor {
         let mut out_r = sig_a * 0.7 - sig_b * 0.1; // わずかな位相差による広がり
 
         // 6. Early Reflections (Room Simulation)
-        let room_mix = self.params.cab_section.room_mix.value();
+        let room_mix = self.params.room_mix.value();
         if room_mix > 0.0 {
-            let room_size = self.params.cab_section.room_size.value();
+            let room_size = self.params.room_size.value();
 
             // 左右で異なるタップ時間を設定し、ステレオ感を強調
             let taps_l = [0.011, 0.023, 0.041];

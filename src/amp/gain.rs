@@ -77,22 +77,22 @@ impl GainProcessor {
     }
 
     pub fn process(&mut self, input: f32) -> f32 {
-        let input_gain_db = self.params.gain_section.input_gain.value();
-        let master_gain_db = self.params.gain_section.master_gain.value();
-        let drive = self.params.gain_section.drive.value();
-        let dist = self.params.gain_section.distortion.value();
+        let input_gain_db = self.params.input_gain.value();
+        let master_gain_db = self.params.master_gain.value();
+        let drive = self.params.drive.value();
+        let dist = self.params.distortion.value();
 
         // 0. Input DC Block (入力段でのオフセット除去)
         let in_dc_fix = input - self.input_dc_block;
         self.input_dc_block = input + 0.998 * (self.input_dc_block - input);
 
         // EQ値を 0.0 ~ 1.0 に正規化 (-18dB ~ +18dB -> 0.0 ~ 1.0)
-        let s_low = (self.params.eq_section.low.value() + 18.0) / 36.0;
-        let s_mid = (self.params.eq_section.mid.value() + 18.0) / 36.0;
-        let s_high = (self.params.eq_section.high.value() + 18.0) / 36.0;
+        let s_low = (self.params.low.value() + 18.0) / 36.0;
+        let s_mid = (self.params.mid.value() + 18.0) / 36.0;
+        let s_high = (self.params.high.value() + 18.0) / 36.0;
 
-        let sag = self.params.fx_section.sag.value();
-        let tight = self.params.fx_section.tight.value();
+        let sag = self.params.sag.value();
+        let tight = self.params.tight.value();
 
         let input_gain = 10.0f32.powf(input_gain_db / 20.0);
         let in_signal = in_dc_fix * input_gain * 1.3; // 初段への入りを強化
