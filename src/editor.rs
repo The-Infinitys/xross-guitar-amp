@@ -22,8 +22,8 @@ fn get_vibrant_rainbow_color(index: usize, total: usize) -> Color32 {
 }
 pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
     // ターゲットサイズを定義（このサイズをベースに描画）
-    let width = 920;
-    let height = 720; // 高さをさらに10%程度削減
+    let width = 840;
+    let height = 600;
     let bg = Background::new();
 
     let editor = EguiEditor::new((width, height), move |egui_ctx, _state| {
@@ -54,7 +54,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                         ui.horizontal_top(|ui| {
                             ui.spacing_mut().item_spacing.x = 2.0; // セクション間を詰める
 
-                            draw_section_weighted(ui, "GAIN", 4.0, |ui| {
+                            draw_section_weighted(ui, "GAIN", 3.0, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().item_spacing.x = 2.0; // ノブ間を極限まで詰める
                                     for k in [
