@@ -2,7 +2,7 @@
 
 ![Thumbnail](thumbnail.png)
 
-Xross Guitar Amp is a modern, high-gain guitar amplifier plugin built with Rust and the [nih-plug](https://github.com/robbert-vdh/nih-plug) framework. It features a unique distortion engine, physical cabinet modeling with dual-microphone positioning, and a vibrant, interactive GUI.
+Xross Guitar Amp is a modern, high-gain guitar amplifier plugin built with Rust and the [truce-audio](https://github.com/truce-audio/truce) framework. It features a unique distortion engine, physical cabinet modeling with dual-microphone positioning, and a vibrant, interactive GUI.
 
 ## Features
 
