@@ -93,11 +93,7 @@ pub struct XrossGuitarAmpParams {
     )]
     pub speaker_size: FloatParam,
 
-    #[param(
-        name = "Speaker Count",
-        range = "linear(1, 8)",
-        default = 4
-    )]
+    #[param(name = "Speaker Count", range = "linear(1, 8)", default = 4)]
     pub speaker_count: IntParam,
 
     #[param(

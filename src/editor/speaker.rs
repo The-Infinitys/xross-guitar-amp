@@ -44,8 +44,8 @@ impl<'a> SpeakerVisualizer<'a> {
                 );
             }
         }
-        let count = self.params.speaker_count.value(); 
-        
+        let count = self.params.speaker_count.value();
+
         let mut positions = Vec::new();
         let max_speaker_radius = self.params.speaker_size.info.range.max() as f32;
         let speaker_radius_per = self.params.speaker_size.value() / max_speaker_radius;
@@ -96,11 +96,7 @@ impl<'a> SpeakerVisualizer<'a> {
 
         for &pos in &positions {
             let unit_radius = speaker_radius_per * speaker_radius;
-            painter.circle_stroke(
-                pos,
-                unit_radius,
-                Stroke::new(2.0, Color32::from_gray(60)),
-            );
+            painter.circle_stroke(pos, unit_radius, Stroke::new(2.0, Color32::from_gray(60)));
             painter.circle_filled(pos, unit_radius * 0.9, Color32::from_gray(25));
             painter.circle_filled(pos, unit_radius * 0.25, Color32::from_gray(45));
             painter.circle_stroke(

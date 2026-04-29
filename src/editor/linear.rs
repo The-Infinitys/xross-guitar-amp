@@ -1,5 +1,5 @@
-use egui::{Align2, Color32, FontId, Rect, Response, Sense, Stroke, Ui, Widget, vec2};
 use crate::utils::FloatParamNormalizedExt;
+use egui::{Align2, Color32, FontId, Rect, Response, Sense, Stroke, Ui, Widget, vec2};
 
 pub struct LinearSlider<'a> {
     param: &'a truce::params::FloatParam,
@@ -8,10 +8,7 @@ pub struct LinearSlider<'a> {
 
 impl<'a> LinearSlider<'a> {
     pub fn new(param: &'a truce::params::FloatParam, color: Color32) -> Self {
-        Self {
-            param,
-            color,
-        }
+        Self { param, color }
     }
 }
 

@@ -1,5 +1,5 @@
+use egui::{self, Color32, Frame, NumExt, UiBuilder, Vec2, ecolor::Hsva};
 use std::sync::Arc;
-use egui::{self, Color32, Frame, UiBuilder, Vec2, ecolor::Hsva};
 use truce::core::Editor;
 use truce_egui::EguiEditor;
 
@@ -20,38 +20,49 @@ fn get_vibrant_rainbow_color(index: usize, total: usize) -> Color32 {
     let h = (index as f32 / total as f32) * 0.85;
     Hsva::new(h, 1.0, 1.0, 1.0).into()
 }
-
 pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
-    let width = 1280;
-    let height = 900;
+    // ターゲットサイズを定義（このサイズをベースに描画）
+    let width = 920;
+    let height = 720; // 高さをさらに10%程度削減
     let bg = Background::new();
 
     let editor = EguiEditor::new((width, height), move |egui_ctx, _state| {
         egui::CentralPanel::default()
             .frame(Frame::NONE)
             .show(egui_ctx, |ui| {
+                // 【重要】2048制限を絶対に超えないよう、1024にクランプ
+                ui.set_max_width(width as f32);
+                ui.set_max_height(height as f32);
+
                 bg.draw(ui);
 
                 let mut color_idx = 0;
                 let total_knobs = 12;
 
-                let container_rect = ui.max_rect().shrink2(Vec2::new(40.0, 30.0));
+                // 外周の余白をさらにタイトに (20, 15 -> 12, 10)
+                let container_rect = ui.max_rect().shrink2(Vec2::new(12.0, 10.0));
+
                 ui.allocate_new_ui(UiBuilder::new().max_rect(container_rect), |ui| {
                     ui.vertical(|ui| {
+                        // --- ヘッダー（ロゴ） ---
                         ui.vertical_centered(|ui| {
-                            Logo::draw(ui, 50.0);
+                            Logo::draw(ui, 30.0); // さらに小型化
                         });
-                        ui.add_space(15.0);
+                        ui.add_space(2.0); // 隙間を最小限に
 
-                        // --- 上段: アンプヘッド ---
+                        // --- 上段: アンプヘッド (コントロール類) ---
                         ui.horizontal_top(|ui| {
-                            ui.spacing_mut().item_spacing.x = 15.0;
+                            ui.spacing_mut().item_spacing.x = 2.0; // セクション間を詰める
 
                             draw_section_weighted(ui, "GAIN", 4.0, |ui| {
                                 ui.horizontal(|ui| {
-                                    for k in
-                                        [&params.input_gain, &params.drive, &params.distortion, &params.master_gain]
-                                    {
+                                    ui.spacing_mut().item_spacing.x = 2.0; // ノブ間を極限まで詰める
+                                    for k in [
+                                        &params.input_gain,
+                                        &params.drive,
+                                        &params.distortion,
+                                        &params.master_gain,
+                                    ] {
                                         ui.add(Knob::new(
                                             k,
                                             get_vibrant_rainbow_color(color_idx, total_knobs),
@@ -63,9 +74,14 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
 
                             draw_section_weighted(ui, "EQUALIZER", 5.0, |ui| {
                                 ui.horizontal(|ui| {
-                                    for k in
-                                        [&params.low, &params.mid, &params.high, &params.presence, &params.resonance]
-                                    {
+                                    ui.spacing_mut().item_spacing.x = 2.0;
+                                    for k in [
+                                        &params.low,
+                                        &params.mid,
+                                        &params.high,
+                                        &params.presence,
+                                        &params.resonance,
+                                    ] {
                                         ui.add(Knob::new(
                                             k,
                                             get_vibrant_rainbow_color(color_idx, total_knobs),
@@ -77,6 +93,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
 
                             draw_section_weighted(ui, "EFFECT", 3.0, |ui| {
                                 ui.horizontal(|ui| {
+                                    ui.spacing_mut().item_spacing.x = 2.0;
                                     for k in [&params.sag, &params.tight, &params.reverb_mix] {
                                         ui.add(Knob::new(
                                             k,
@@ -88,60 +105,46 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                             });
                         });
 
-                        ui.add_space(20.0);
+                        ui.add_space(6.0); // 段落間のスペース
 
                         // --- 下段: キャビネットセクション ---
-                        let cab_height = ui.available_height() - 20.0;
+                        // 高さが足りない場合に備え、最低限の高さを確保しつつ余白を使う
+                        let cab_height = ui.available_height().at_most(400.0);
                         draw_section_with_height(
                             ui,
                             "CABINET & DUAL MICROPHONES",
                             cab_height,
                             |ui| {
                                 ui.vertical(|ui| {
-                                    // 上部コントロール類
                                     ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 40.0;
+                                        ui.spacing_mut().item_spacing.x = 15.0; // 横の密度を上げる
 
                                         let mic_colors = [
                                             Color32::from_rgb(0, 180, 255),
                                             Color32::from_rgb(255, 100, 0),
                                         ];
                                         let mic_data = [
-                                            (
-                                                "MIC A (Left)",
-                                                &params.mic_a_axis,
-                                                &params.mic_a_distance,
-                                            ),
-                                            (
-                                                "MIC B (Right)",
-                                                &params.mic_b_axis,
-                                                &params.mic_b_distance,
-                                            ),
+                                            ("MIC A", &params.mic_a_axis, &params.mic_a_distance),
+                                            ("MIC B", &params.mic_b_axis, &params.mic_b_distance),
                                         ];
 
-                                        for (i, (label, axis, dist)) in
-                                            mic_data.iter().enumerate()
+                                        for (i, (label, axis, dist)) in mic_data.iter().enumerate()
                                         {
                                             ui.vertical(|ui| {
                                                 ui.label(
                                                     egui::RichText::new(*label)
                                                         .color(mic_colors[i])
-                                                        .strong(),
+                                                        .strong()
+                                                        .size(10.0),
                                                 );
-                                                ui.add(LinearSlider::new(
-                                                    axis,
-                                                    mic_colors[i],
-                                                ));
-                                                ui.add(LinearSlider::new(
-                                                    dist,
-                                                    mic_colors[i],
-                                                ));
+                                                ui.add(LinearSlider::new(axis, mic_colors[i]));
+                                                ui.add(LinearSlider::new(dist, mic_colors[i]));
                                             });
                                         }
 
                                         ui.vertical(|ui| {
                                             ui.label(
-                                                egui::RichText::new("Cabinet / Room").strong(),
+                                                egui::RichText::new("Cab/Room").strong().size(10.0),
                                             );
                                             ui.add(LinearSlider::new(
                                                 &params.speaker_size,
@@ -155,23 +158,21 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
 
                                         ui.vertical(|ui| {
                                             ui.label(
-                                                egui::RichText::new("Speaker Count").strong(),
+                                                egui::RichText::new("Speakers").strong().size(10.0),
                                             );
-                                            ui.add_space(5.0);
+                                            ui.add_space(2.0);
                                             ui.horizontal(|ui| {
+                                                ui.spacing_mut().item_spacing.x = 2.0;
                                                 for &count in &[1, 2, 4, 6, 8] {
-                                                    let is_selected = params
-                                                        .speaker_count
-                                                        .value()
-                                                        == count;
-                                                    let btn =
-                                                        egui::Button::new(count.to_string())
-                                                            .fill(if is_selected {
-                                                                Color32::from_rgb(0, 128, 0)
-                                                            } else {
-                                                                Color32::from_gray(60)
-                                                            })
-                                                            .min_size(Vec2::new(35.0, 25.0));
+                                                    let is_selected =
+                                                        params.speaker_count.value() == count;
+                                                    let btn = egui::Button::new(count.to_string())
+                                                        .fill(if is_selected {
+                                                            Color32::from_rgb(0, 80, 0)
+                                                        } else {
+                                                            Color32::from_gray(40)
+                                                        })
+                                                        .min_size(Vec2::new(24.0, 18.0));
                                                     if ui.add(btn).clicked() {
                                                         params.speaker_count.set_value(count);
                                                     }
@@ -180,14 +181,14 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                                         });
                                     });
 
-                                    ui.add_space(15.0);
+                                    ui.add_space(4.0);
                                     ui.separator();
 
-                                    // --- ビジュアライザー ---
-                                    let visualizer_area = ui.available_height() - 10.0;
+                                    // ビジュアライザーも少し控えめなサイズに
+                                    let visualizer_area = ui.available_height() - 5.0;
                                     ui.vertical_centered(|ui| {
                                         SpeakerVisualizer::new(&params)
-                                            .draw(ui, visualizer_area.min(450.0));
+                                            .draw(ui, visualizer_area.min(300.0));
                                     });
                                 });
                             },
@@ -199,16 +200,16 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
     Box::new(editor)
 }
 
-/// 重み付けされた幅でセクションを描画する
 fn draw_section_weighted(
     ui: &mut egui::Ui,
     title: &str,
     weight: f32,
     add_contents: impl FnMut(&mut egui::Ui),
 ) {
-    let total_weight = 12.0;
+    let total_weight = 10.0;
     let spacing = ui.spacing().item_spacing.x;
-    let available_width = ui.available_width() - (spacing * 2.0);
+    let num_elements = 3.0;
+    let available_width = (ui.available_width() - (spacing * (num_elements - 1.0))).max(0.0);
     let width = (available_width * (weight / total_weight)).floor();
 
     ui.allocate_ui(Vec2::new(width, 0.0), |ui| {
@@ -223,24 +224,21 @@ fn draw_section_with_height(
     mut add_contents: impl FnMut(&mut egui::Ui),
 ) {
     Frame::NONE
-        .fill(Color32::from_black_alpha(150))
-        .stroke(egui::Stroke::new(1.0, Color32::from_gray(70)))
-        .corner_radius(10.0)
-        .inner_margin(15.0)
+        .fill(Color32::from_black_alpha(160)) // 背景を少し濃くして視認性確保
+        .stroke(egui::Stroke::new(1.0, Color32::from_gray(60)))
+        .corner_radius(6.0) // 角丸も少し控えめに
+        .inner_margin(8.0) // 15.0 -> 8.0 大幅削減
         .show(ui, |ui| {
             ui.set_min_height(height);
             ui.set_width(ui.available_width());
             ui.vertical(|ui| {
-                ui.horizontal(|ui| {
-                    ui.label(
-                        egui::RichText::new(title)
-                            .strong()
-                            .color(Color32::from_gray(180))
-                            .size(13.0),
-                    );
-                });
-
-                ui.add_space(13.0);
+                ui.label(
+                    egui::RichText::new(title)
+                        .strong()
+                        .color(Color32::from_gray(160))
+                        .size(10.0),
+                );
+                ui.add_space(6.0);
                 add_contents(ui);
             });
         });
