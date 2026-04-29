@@ -39,7 +39,7 @@ impl Background {
             let hue = (i as f32 / 12.0 + t * 0.05) % 1.0;
 
             // HSVからRGBへ変換
-            let base_color = self.hsv_to_rgb(hue, 0.8, 0.2);
+            let base_color = self.hsv_to_rgb(hue, 0.8, 0.5);
             let glow_radius = rect.width() * 0.25;
 
             self.draw_glow_circle(painter, pos, glow_radius, base_color);
