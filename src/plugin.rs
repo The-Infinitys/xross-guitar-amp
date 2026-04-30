@@ -15,11 +15,8 @@ impl PluginLogic for XrossGuitarAmp {
         events
             .iter()
             .map(|event| &event.body)
-            .for_each(|event| match event {
-                EventBody::ParamChange { id, value } => {
-                    self.params().set_normalized(*id, *value);
-                }
-                _ => {}
+            .for_each(|event| if let EventBody::ParamChange { id, value } = event {
+                self.params().set_normalized(*id, *value);
             });
 
         self.process_truce(buffer)

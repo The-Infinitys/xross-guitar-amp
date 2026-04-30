@@ -81,7 +81,7 @@ impl<'a> Widget for Knob<'a> {
             painter.text(
                 title_rect.center(),
                 Align2::CENTER_CENTER,
-                &self.param.info.name,
+                self.param.info.name,
                 FontId::proportional(10.5), // 13.0 -> 10.5
                 Color32::from_gray(180),
             );

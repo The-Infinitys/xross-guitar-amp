@@ -155,7 +155,7 @@ pub struct XrossGuitarAmpParams {
 
     #[param(
         name = "Tight",
-        range = "skewed(20.0, 500.0, 0.5)",
+        range = "linear(20.0, 500.0)",
         default = 80.0,
         unit = " Hz",
         smooth = "exp(50)"

@@ -36,33 +36,34 @@ impl XrossGuitarAmp {
     }
 
     pub fn process_truce(&mut self, buffer: &mut AudioBuffer) -> ProcessStatus {
-        let num_channels = buffer.num_output_channels();
+        let num_channels = buffer.num_input_channels();
         let num_samples = buffer.num_samples();
 
         for i in 0..num_samples {
-            // モノラル入力 (ch 0) を想定
-            let input = {
-                let (ins, _) = buffer.io(0);
-                ins[i]
-            };
+            for channel in 0..num_channels {
+                let input = {
+                    let ins = buffer.input(channel);
+                    ins[i]
+                };
 
-            // 1. Gain & EQ (Mono)
-            let mut mono_signal = self.gain_proc.process(input);
-            mono_signal = self.eq_proc.process(mono_signal);
+                // 1. Gain & EQ (Mono)
+                let mut mono_signal = self.gain_proc.process(input);
+                mono_signal = self.eq_proc.process(mono_signal);
 
-            // 2. Cab (Mono to Stereo)
-            let (left_out, right_out) = self.cab_proc.process(mono_signal);
+                // 2. Cab (Mono to Stereo)
+                let (left_out, right_out) = self.cab_proc.process(mono_signal);
 
-            // 3. Write outputs
-            // L channel
-            {
-                let (_, outs) = buffer.io(0);
-                outs[i] = left_out;
-            }
-            // R channel
-            if num_channels >= 2 {
-                let (_, outs) = buffer.io(1);
-                outs[i] = right_out;
+                // 3. Write outputs
+                // L channel
+                let num_channels = buffer.num_output_channels();
+                if num_channels >= 1 {
+                    let outs = buffer.output(0);
+                    outs[i] = left_out;
+                }
+                if num_channels >= 2 {
+                    let outs = buffer.output(1);
+                    outs[i] = right_out;
+                }
             }
         }
 
