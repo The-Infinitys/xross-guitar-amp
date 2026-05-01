@@ -42,7 +42,7 @@ impl GainProcessor {
             }
         });
         self.noise_gate.pre_process(input);
-        let input_factor = 10.0f32.powf(self.params.input_gain.value());
+        let input_factor = 10.0f32.powf(self.params.input_gain.value() / 20.0);
         input.iter_mut().for_each(|i| {
             *i *= input_factor;
         });
@@ -57,5 +57,9 @@ impl GainProcessor {
         self.metal
             .process_slice(input, drive, dist, sag, tight, s_low, s_mid, s_high);
         self.noise_gate.post_process(input);
+        let master_factor = 10.0f32.powf(self.params.master_gain.value() / 20.0);
+        input.iter_mut().for_each(|i| {
+            *i *= master_factor;
+        });
     }
 }

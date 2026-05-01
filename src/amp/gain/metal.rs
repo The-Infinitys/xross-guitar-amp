@@ -181,7 +181,7 @@ impl MetalDistortion {
         // DC Block (オフセット除去)
         let dc_fix = filtered_out - self.dc_block;
         self.dc_block = filtered_out + 0.995 * (self.dc_block - filtered_out);
-        let volume = 0.125;
+        let volume = 0.4;
         dc_fix * volume
     }
 
