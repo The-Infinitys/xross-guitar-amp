@@ -31,6 +31,17 @@ pub struct MetalDistortion {
     sample_rate: f32,
 }
 
+#[derive(Clone, Copy)]
+pub struct MetalParams {
+    pub drive: f32,
+    pub dist: f32,
+    pub sag: f32,
+    pub tight: f32,
+    pub s_low: f32,
+    pub s_mid: f32,
+    pub s_high: f32,
+}
+
 impl MetalDistortion {
     pub fn new(sample_rate: f32) -> Self {
         Self {
@@ -53,17 +64,15 @@ impl MetalDistortion {
 
     /// 信号処理のコアロジック
     #[inline(always)]
-    fn drive_core(
-        &mut self,
-        input: f32,
-        drive: f32, // 0.0 - 1.0
-        dist: f32,  // 0.0 - 1.0 (Texture / Gain saturation density)
-        sag: f32,   // 0.0 - 1.0 (Compression / Power supply dip)
-        tight: f32, // 10.0 - 500.0 (Hz) (Pre-HPF cutoff)
-        s_low: f32,
-        s_mid: f32,
-        s_high: f32,
-    ) -> f32 {
+    fn drive_core(&mut self, input: f32, p: MetalParams) -> f32 {
+        let drive = p.drive;
+        let dist = p.dist;
+        let sag = p.sag;
+        let tight = p.tight;
+        let s_low = p.s_low;
+        let s_mid = p.s_mid;
+        let s_high = p.s_high;
+
         // 0. Driveが0なら即座にリターン (完全クリーン)
         if drive <= 0.0 {
             return input;
@@ -134,25 +143,15 @@ impl MetalDistortion {
         self.slew_state
     }
 
-    pub fn process_sample(
-        &mut self,
-        input: f32,
-        drive: f32,
-        dist: f32,
-        sag: f32,
-        tight: f32,
-        s_low: f32,
-        s_mid: f32,
-        s_high: f32,
-    ) -> f32 {
-        if drive <= 0.0 {
+    pub fn process_sample(&mut self, input: f32, p: MetalParams) -> f32 {
+        if p.drive <= 0.0 {
             return input;
         }
 
         // オーバーサンプリング倍率
-        let os_factor = if drive < 0.2 {
+        let os_factor = if p.drive < 0.2 {
             1
-        } else if drive < 0.5 {
+        } else if p.drive < 0.5 {
             2
         } else {
             4
@@ -166,15 +165,14 @@ impl MetalDistortion {
         for i in 0..os_factor {
             let fraction = i as f32 * inv_os;
             let sub_sample = self.prev_input + (input - self.prev_input) * fraction;
-            output_sum +=
-                self.drive_core(sub_sample, drive, dist, sag, tight, s_low, s_mid, s_high);
+            output_sum += self.drive_core(sub_sample, p);
         }
         self.prev_input = input;
 
         let raw_out = output_sum * inv_os;
 
         // 最終段 LPF (エイリアシング除去と音色の最終調整)
-        let lpf_hz = 17500.0 - (1.0 - s_high) * 6000.0;
+        let lpf_hz = 17500.0 - (1.0 - p.s_high) * 6000.0;
         let (a1, a2, b0, b1, b2) = Self::calculate_biquad_lpf(self.sample_rate, lpf_hz);
         let filtered_out = self.os_lpf_biquad.process(raw_out, a1, a2, b0, b1, b2);
 
@@ -185,19 +183,9 @@ impl MetalDistortion {
         dc_fix * volume
     }
 
-    pub fn process_slice(
-        &mut self,
-        slice: &mut [f32],
-        drive: f32,
-        dist: f32,
-        sag: f32,
-        tight: f32,
-        s_low: f32,
-        s_mid: f32,
-        s_high: f32,
-    ) {
+    pub fn process_slice(&mut self, slice: &mut [f32], p: MetalParams) {
         for sample in slice.iter_mut() {
-            *sample = self.process_sample(*sample, drive, dist, sag, tight, s_low, s_mid, s_high);
+            *sample = self.process_sample(*sample, p);
         }
     }
 

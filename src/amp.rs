@@ -52,9 +52,7 @@ impl XrossGuitarAmp {
         }
         {
             let (input, output) = buffer.io(0);
-            for i in 0..num_samples {
-                output[i] = input[i];
-            }
+            output[..num_samples].copy_from_slice(&input[..num_samples]);
         }
         let output_l = buffer.output(0);
         self.gain_proc.process(output_l);

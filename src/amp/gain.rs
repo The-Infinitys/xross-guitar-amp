@@ -54,8 +54,18 @@ impl GainProcessor {
         let s_high = self.params.style_high.value();
         let sag = self.params.sag.value();
         let tight = self.params.tight.value();
-        self.metal
-            .process_slice(input, drive, dist, sag, tight, s_low, s_mid, s_high);
+
+        let metal_params = metal::MetalParams {
+            drive,
+            dist,
+            sag,
+            tight,
+            s_low,
+            s_mid,
+            s_high,
+        };
+
+        self.metal.process_slice(input, metal_params);
         self.noise_gate.post_process(input);
         let master_factor = 10.0f32.powf(self.params.master_gain.value() / 20.0);
         input.iter_mut().for_each(|i| {

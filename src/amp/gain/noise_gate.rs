@@ -30,11 +30,13 @@ pub struct AutoNoiseGate {
 
 impl AutoNoiseGate {
     pub fn new(sample_rate: f32) -> Self {
-        let mut state = GateState::default();
-        state.gate_gain = 1.0;
-        state.noise_floor_full = 0.001;
-        state.noise_floor_high = 0.0005;
-        state.adaptive_sensitivity = 6.0;
+        let state = GateState {
+            gate_gain: 1.0,
+            noise_floor_full: 0.001,
+            noise_floor_high: 0.0005,
+            adaptive_sensitivity: 6.0,
+            ..GateState::default()
+        };
 
         Self {
             sample_rate,
@@ -57,7 +59,7 @@ impl AutoNoiseGate {
         let nf_min = 0.00003; // ノイズフロア学習の下限 (-90dB)
 
         // 簡易HPF係数 (約1.5kHzで高域抽出)
-        let hp_coef = (2.0 * PI * 1500.0 / self.sample_rate).exp() * -1.0 + 1.0;
+        let hp_coef = -(2.0 * PI * 1500.0 / self.sample_rate).exp() + 1.0;
 
         for (i, &sample) in buffer.iter().enumerate() {
             let abs_in = sample.abs();
