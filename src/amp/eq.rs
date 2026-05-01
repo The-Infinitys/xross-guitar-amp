@@ -51,9 +51,9 @@ impl EqProcessor {
     }
 
     fn update_coefficients(&mut self) {
-        let l = self.params.low.value();
-        let m = self.params.mid.value();
-        let h = self.params.high.value();
+        let l = self.params.eq_low.value();
+        let m = self.params.eq_mid.value();
+        let h = self.params.eq_high.value();
         let p = self.params.presence.value();
         let r = self.params.resonance.value();
 

@@ -12,12 +12,11 @@ impl PluginLogic for XrossGuitarAmp {
         events: &EventList,
         _context: &mut ProcessContext,
     ) -> ProcessStatus {
-        events
-            .iter()
-            .map(|event| &event.body)
-            .for_each(|event| if let EventBody::ParamChange { id, value } = event {
+        events.iter().map(|event| &event.body).for_each(|event| {
+            if let EventBody::ParamChange { id, value } = event {
                 self.params().set_normalized(*id, *value);
-            });
+            }
+        });
 
         self.process_truce(buffer)
     }

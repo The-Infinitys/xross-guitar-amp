@@ -10,6 +10,24 @@ impl<'a> LinearSlider<'a> {
     pub fn new(param: &'a truce::params::FloatParam, color: Color32) -> Self {
         Self { param, color }
     }
+
+    /// Knob.rs / StackedKnob.rs と共通の動的カラー計算
+    fn get_dynamic_color(base_color: Color32, visual_val: f32) -> Color32 {
+        let r = (base_color.r() as f32 * (0.6 + visual_val * 0.4)) as u8;
+        let g = (base_color.g() as f32 * (0.6 + visual_val * 0.4)) as u8;
+        let b = (base_color.b() as f32 * (0.6 + visual_val * 0.4)) as u8;
+
+        if visual_val > 0.85 {
+            let boost = ((visual_val - 0.85) * 6.6 * 40.0) as u8;
+            Color32::from_rgb(
+                r.saturating_add(boost),
+                g.saturating_add(boost),
+                b.saturating_add(boost),
+            )
+        } else {
+            Color32::from_rgb(r, g, b)
+        }
+    }
 }
 
 impl<'a> Widget for LinearSlider<'a> {
@@ -21,61 +39,55 @@ impl<'a> Widget for LinearSlider<'a> {
         let text_edit_id = id.with("text_edit");
         let edit_string_id = id.with("edit_string");
 
-        // メモリから編集状態を取得
-        let mut is_editing_text =
-            ui.memory(|mem| mem.data.get_temp::<bool>(text_edit_id).unwrap_or(false));
+        // 状態取得
+        let mut is_editing = ui.memory(|m| m.data.get_temp::<bool>(text_edit_id).unwrap_or(false));
+        let visual_val = self.param.value_normalized() as f32;
+        let unit = self.param.info.unit.as_str();
 
-        let text_rect = rect.shrink(2.0); // テキスト表示領域
+        // --- 1. インタラクション ---
 
-        // ====================== インタラクション処理 ======================
-        // 1. テキスト領域以外で右クリック → リセット
+        // 右クリックでリセット
         if response.secondary_clicked() {
             self.param.set_value(self.param.info.default_plain);
+            ui.memory_mut(|m| m.data.insert_temp(text_edit_id, false));
+            is_editing = false;
+        }
 
-            is_editing_text = false;
-            ui.memory_mut(|mem| {
-                mem.data.insert_temp(text_edit_id, false);
-                mem.data.remove::<String>(edit_string_id);
+        // クリックでテキスト入力モードへ
+        if response.clicked() && !is_editing {
+            is_editing = true;
+            ui.memory_mut(|m| {
+                m.data.insert_temp(text_edit_id, true);
+                m.data
+                    .insert_temp(edit_string_id, format!("{:.1}", self.param.value()));
             });
         }
 
-        // 2. テキスト領域をクリック → 編集モード
-        let text_interaction = ui.interact(text_rect, id.with("text_area"), Sense::click());
-        if text_interaction.clicked() && !is_editing_text {
-            is_editing_text = true;
-            ui.memory_mut(|mem| {
-                mem.data.insert_temp(text_edit_id, true);
-                // 初期値として現在の値を入れる
-                mem.data
-                    .insert_temp(edit_string_id, format!("{:.2}", self.param.value()));
-            });
-        }
-
-        // 3. ドラッグ操作（編集モード中は無効）
-        if response.dragged() && !is_editing_text {
-            let val = self.param.value_normalized();
-            let delta = (response.drag_delta().x / rect.width()) as f64; // 横スライダー前提
+        // ドラッグ操作
+        if response.dragged() && !is_editing {
+            let delta = (response.drag_delta().x / rect.width()) as f64;
             if delta != 0.0 {
-                let new_val = (val + delta).clamp(0.0, 1.0);
+                let new_val = (self.param.value_normalized() + delta).clamp(0.0, 1.0);
                 self.param.set_value_normalized(new_val);
             }
         }
 
-        // ====================== 描画 ======================
+        // --- 2. 描画 ---
         if ui.is_rect_visible(rect) {
-            let visual_val = self.param.value_normalized() as f32;
-            let bar_color = self.color.linear_multiply(0.6);
-
-            // 背景とバー
             let painter = ui.painter();
-            painter.rect_filled(rect, 2.0, Color32::from_rgb(5, 5, 5));
+            let bar_color = Self::get_dynamic_color(self.color, visual_val);
 
-            let fill_rect = {
-                let x_pos = rect.left() + (visual_val * rect.width());
-                Rect::from_min_max(rect.left_top(), egui::pos2(x_pos, rect.bottom()))
-            };
-            painter.rect_filled(fill_rect, 1.0, bar_color);
+            // 背景
+            painter.rect_filled(rect, 2.0, Color32::from_rgb(15, 15, 15));
 
+            // フィットバー（左から現在の値まで）
+            let fill_rect = Rect::from_min_max(
+                rect.left_top(),
+                egui::pos2(rect.left() + (visual_val * rect.width()), rect.bottom()),
+            );
+            painter.rect_filled(fill_rect, 2.0, bar_color.linear_multiply(0.8));
+
+            // 外枠
             painter.rect_stroke(
                 rect,
                 2.0,
@@ -83,79 +95,85 @@ impl<'a> Widget for LinearSlider<'a> {
                 egui::StrokeKind::Middle,
             );
 
-            // ハンドル
+            // ハンドル（細い白い線）
             let handle_x = (rect.left() + visual_val * rect.width())
                 .clamp(rect.left() + 1.0, rect.right() - 1.0);
-            let handle_rect = Rect::from_center_size(
-                egui::pos2(handle_x, rect.center().y),
-                vec2(2.0, rect.height()),
+            painter.line_segment(
+                [
+                    egui::pos2(handle_x, rect.top()),
+                    egui::pos2(handle_x, rect.bottom()),
+                ],
+                Stroke::new(1.5, Color32::WHITE),
             );
-            painter.rect_filled(handle_rect, 0.0, Color32::WHITE);
 
-            // テキスト描画
-            if is_editing_text {
-                let mut value_text = ui.memory(|mem| {
-                    mem.data
+            // テキスト表示
+            if is_editing {
+                let mut val_str = ui.memory(|m| {
+                    m.data
                         .get_temp::<String>(edit_string_id)
-                        .unwrap_or_else(|| format!("{:.2}", self.param.value()))
+                        .unwrap_or_else(|| format!("{:.1}", self.param.value()))
                 });
 
-                let output = ui.put(
-                    text_rect,
-                    egui::TextEdit::singleline(&mut value_text)
-                        .font(FontId::proportional(11.0))
-                        .text_color(Color32::WHITE)
+                let res = ui.put(
+                    rect.shrink(2.0),
+                    egui::TextEdit::singleline(&mut val_str)
+                        .font(FontId::monospace(11.0))
                         .horizontal_align(egui::Align::Center)
                         .frame(false),
                 );
 
-                if output.changed() {
-                    ui.memory_mut(|mem| mem.data.insert_temp(edit_string_id, value_text.clone()));
+                if res.changed() {
+                    ui.memory_mut(|m| m.data.insert_temp(edit_string_id, val_str.clone()));
                 }
-
-                if output.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                    if let Ok(parsed) = value_text.parse::<f64>() {
-                        self.param.set_value(parsed);
+                if res.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    if let Ok(v) = val_str.parse::<f64>() {
+                        self.param.set_value(v);
                     }
-                    is_editing_text = false;
-                    ui.memory_mut(|mem| {
-                        mem.data.insert_temp(text_edit_id, false);
-                        mem.data.remove::<String>(edit_string_id);
-                    });
+                    ui.memory_mut(|m| m.data.insert_temp(text_edit_id, false));
                 } else {
-                    output.request_focus();
+                    res.request_focus();
                 }
             } else {
-                // 通常テキスト
-                let text = format!("{}: {:.1}", self.param.info.name, self.param.value());
+                // 表示用テキスト: 「名前: 値単位」
+                let display_text = format!(
+                    "{}: {:.1}{}",
+                    self.param.info.name,
+                    self.param.value(),
+                    unit
+                );
                 let font_id = FontId::proportional(11.0);
                 let text_pos = rect.center();
 
+                // 1. シャドウ（視認性向上）
                 painter.text(
                     text_pos + vec2(1.0, 1.0),
                     Align2::CENTER_CENTER,
-                    &text,
+                    &display_text,
                     font_id.clone(),
-                    Color32::from_black_alpha(200),
+                    Color32::from_black_alpha(180),
                 );
+
+                // 2. 基本の暗いテキスト
                 painter.text(
                     text_pos,
                     Align2::CENTER_CENTER,
-                    &text,
+                    &display_text,
                     font_id.clone(),
-                    Color32::from_gray(180),
+                    Color32::from_gray(160),
                 );
+
+                // 3. バーに重なっている部分だけを白抜きにするクリッピング描画
                 painter.with_clip_rect(fill_rect).text(
                     text_pos,
                     Align2::CENTER_CENTER,
-                    &text,
+                    &display_text,
                     font_id,
                     Color32::WHITE,
                 );
             }
         }
 
-        if response.dragged() || is_editing_text {
+        if response.dragged() || is_editing {
             ui.ctx().request_repaint();
         }
 

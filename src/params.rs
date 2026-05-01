@@ -7,7 +7,7 @@ pub struct XrossGuitarAmpParams {
         name = "Input Gain",
         range = "linear(-20.0, 20.0)",
         default = 0.0,
-        unit = " dB",
+        unit = "dB",
         smooth = "exp(50)"
     )]
     pub input_gain: FloatParam,
@@ -32,44 +32,68 @@ pub struct XrossGuitarAmpParams {
         name = "Master",
         range = "linear(-60.0, 0.0)",
         default = -6.0,
-        unit = " dB",
+        unit = "dB",
         smooth = "exp(50)"
     )]
     pub master_gain: FloatParam,
 
+    #[param(
+        name = "Style Low",
+        range = "linear(0.0, 1.0)",
+        default = 0.5,
+        smooth = "exp(50)"
+    )]
+    pub style_low: FloatParam,
+
+    #[param(
+        name = "Style Mid",
+        range = "linear(0.0, 1.0)",
+        default = 0.5,
+        smooth = "exp(50)"
+    )]
+    pub style_mid: FloatParam,
+
+    #[param(
+        name = "Style High",
+        range = "linear(0.0, 1.0)",
+        default = 0.5,
+        smooth = "exp(50)"
+    )]
+    pub style_high: FloatParam,
+
     // --- 2. EQ Section ---
     #[param(
-        name = "Low",
+        name = "Eq Low",
         range = "linear(-18.0, 18.0)",
         default = 0.0,
-        unit = " dB",
+        unit = "dB",
         smooth = "exp(50)"
     )]
-    pub low: FloatParam,
+    pub eq_low: FloatParam,
 
     #[param(
-        name = "Mid",
+        name = "Eq Mid",
         range = "linear(-18.0, 18.0)",
         default = 0.0,
-        unit = " dB",
+        unit = "dB",
         smooth = "exp(50)"
     )]
-    pub mid: FloatParam,
+    pub eq_mid: FloatParam,
 
     #[param(
-        name = "High",
+        name = "Eq High",
         range = "linear(-18.0, 18.0)",
         default = 0.0,
-        unit = " dB",
+        unit = "dB",
         smooth = "exp(50)"
     )]
-    pub high: FloatParam,
+    pub eq_high: FloatParam,
 
     #[param(
         name = "Presence",
         range = "linear(0.0, 18.0)",
         default = 0.0,
-        unit = " dB",
+        unit = "dB",
         smooth = "exp(50)"
     )]
     pub presence: FloatParam,
@@ -78,7 +102,7 @@ pub struct XrossGuitarAmpParams {
         name = "Resonance",
         range = "linear(0.0, 18.0)",
         default = 0.0,
-        unit = " dB",
+        unit = "dB",
         smooth = "exp(50)"
     )]
     pub resonance: FloatParam,
@@ -88,7 +112,6 @@ pub struct XrossGuitarAmpParams {
         name = "Speaker Size",
         range = "linear(8.0, 15.0)",
         default = 12.0,
-        unit = " inch",
         smooth = "exp(50)"
     )]
     pub speaker_size: FloatParam,
@@ -157,7 +180,7 @@ pub struct XrossGuitarAmpParams {
         name = "Tight",
         range = "linear(20.0, 500.0)",
         default = 80.0,
-        unit = " Hz",
+        unit = "Hz",
         smooth = "exp(50)"
     )]
     pub tight: FloatParam,

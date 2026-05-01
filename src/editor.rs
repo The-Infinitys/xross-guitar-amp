@@ -3,12 +3,13 @@ use std::sync::Arc;
 use truce::core::Editor;
 use truce_egui::EguiEditor;
 
-use crate::params::XrossGuitarAmpParams;
+use crate::{editor::stacked::StackedKnob, params::XrossGuitarAmpParams};
 mod background;
 mod knob;
 mod linear;
 mod logo;
 mod speaker;
+mod stacked;
 
 use background::Background;
 use knob::Knob;
@@ -23,7 +24,7 @@ fn get_vibrant_rainbow_color(index: usize, total: usize) -> Color32 {
 pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
     // ターゲットサイズを定義（このサイズをベースに描画）
     let width = 840;
-    let height = 600;
+    let height = 640;
     let bg = Background::new();
 
     let editor = EguiEditor::new((width, height), move |egui_ctx, _state| {
@@ -37,7 +38,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                 bg.draw(ui);
 
                 let mut color_idx = 0;
-                let total_knobs = 12;
+                let total_knobs = 15;
 
                 // 外周の余白をさらにタイトに (20, 15 -> 12, 10)
                 let container_rect = ui.max_rect().shrink2(Vec2::new(12.0, 10.0));
@@ -76,12 +77,19 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().item_spacing.x = 2.0;
                                     for k in [
-                                        &params.low,
-                                        &params.mid,
-                                        &params.high,
-                                        &params.presence,
-                                        &params.resonance,
+                                        (&params.style_low, &params.eq_low),
+                                        (&params.style_mid, &params.eq_mid),
+                                        (&params.style_high, &params.eq_high),
                                     ] {
+                                        ui.add(StackedKnob::new(
+                                            k.0,
+                                            k.1,
+                                            get_vibrant_rainbow_color(color_idx, total_knobs),
+                                            get_vibrant_rainbow_color(color_idx + 1, total_knobs),
+                                        ));
+                                        color_idx += 2;
+                                    }
+                                    for k in [&params.presence, &params.resonance] {
                                         ui.add(Knob::new(
                                             k,
                                             get_vibrant_rainbow_color(color_idx, total_knobs),
