@@ -26,13 +26,11 @@ impl EqProcessor {
             high_filter: Biquad::new(sr),
             presence_filter: Biquad::new(sr),
             resonance_filter: Biquad::new(sr),
-            // 初期値とズラしておくことで初回に必ず計算させる
             last_eq_values: [-999.0; 5],
         }
     }
 
     pub fn initialize(&mut self, sample_rate: f32) {
-        // 全フィルタのサンプリングレートを更新
         self.low_filter = Biquad::new(sample_rate);
         self.mid_filter = Biquad::new(sample_rate);
         self.high_filter = Biquad::new(sample_rate);
@@ -50,65 +48,62 @@ impl EqProcessor {
         self.last_eq_values = [-999.0; 5];
     }
 
-    fn update_coefficients(&mut self) {
+    /// パラメータの変更をチェックし、必要であれば係数を更新する
+    fn update_coefficients_if_needed(&mut self) {
         let l = self.params.eq_low.value();
         let m = self.params.eq_mid.value();
         let h = self.params.eq_high.value();
         let p = self.params.presence.value();
         let r = self.params.resonance.value();
 
-        // 変更があった場合のみ重いフィルタ係数計算を実行
+        // 差分チェック
         if (l - self.last_eq_values[0]).abs() > 0.01
             || (m - self.last_eq_values[1]).abs() > 0.01
             || (h - self.last_eq_values[2]).abs() > 0.01
             || (p - self.last_eq_values[3]).abs() > 0.01
             || (r - self.last_eq_values[4]).abs() > 0.01
         {
-            // --- ギターアンプとして「美味しい」周波数選定 ---
-
-            // Low: 100Hz よりも 150Hz 辺りにピークを持たせると「厚み」が出る
+            // Low: 150Hz
             self.low_filter
                 .set_params(FilterType::LowShelf(l), 150.0, 0.707);
 
-            // Mid: 750Hz はモダン。500Hz-800Hz 辺りの変化が「粘り」を生む。
-            // Q値を少し広め(0.4)にして、不自然なピーク感を抑える
+            // Mid: 700Hz
             self.mid_filter
                 .set_params(FilterType::Peaking(m), 700.0, 0.4);
 
-            // High: 3kHz は「芯」の部分。
+            // High: 3kHz
             self.high_filter
                 .set_params(FilterType::HighShelf(h), 3000.0, 0.707);
 
-            // Presence: 6kHz〜8kHz。ここが「ヌケ」の正体。
-            // キャビネットで削られがちな高域をここで補う
+            // Presence: 6.5kHz
             self.presence_filter
                 .set_params(FilterType::HighShelf(p), 6500.0, 0.8);
 
-            // Resonance: 80Hz。スピーカーの「箱の揺れ」を強調。
-            // Qを鋭め(1.5)にして、タイトな重低音にする
+            // Resonance: 80Hz
             self.resonance_filter
                 .set_params(FilterType::Peaking(r), 80.0, 1.5);
 
-            // キャッシュ更新
             self.last_eq_values = [l, m, h, p, r];
         }
     }
 
-    pub fn process(&mut self, input: f32) -> f32 {
-        // パラメータ更新のチェック
-        self.update_coefficients();
+    /// バッファを一括処理する
+    pub fn process(&mut self, buffer: &mut [f32]) {
+        // バッファ処理の開始前に一度だけパラメータチェック
+        self.update_coefficients_if_needed();
 
-        // 処理順序も重要。
-        // 一般的に歪みの後は 低域のレゾナンス(Resonance)から始まり、
-        // 最後にヌケを調整する Presence を通すのが音楽的。
-        let mut signal = input;
+        // フィルタを直列に適用
+        // サンプルごとのループ内で全フィルタを通す
+        for sample in buffer.iter_mut() {
+            let mut s = *sample;
 
-        signal = self.resonance_filter.process(signal);
-        signal = self.low_filter.process(signal);
-        signal = self.mid_filter.process(signal);
-        signal = self.high_filter.process(signal);
-        signal = self.presence_filter.process(signal);
+            s = self.resonance_filter.process(s);
+            s = self.low_filter.process(s);
+            s = self.mid_filter.process(s);
+            s = self.high_filter.process(s);
+            s = self.presence_filter.process(s);
 
-        signal
+            *sample = s;
+        }
     }
 }
