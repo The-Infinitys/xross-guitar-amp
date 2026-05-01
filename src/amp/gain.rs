@@ -42,13 +42,20 @@ impl GainProcessor {
             }
         });
         self.noise_gate.pre_process(input);
+        let input_factor = 10.0f32.powf(self.params.input_gain.value());
+        input.iter_mut().for_each(|i| {
+            *i *= input_factor;
+        });
+
         let drive = self.params.drive.value();
         let dist = self.params.distortion.value();
         let s_low = self.params.style_low.value();
         let s_mid = self.params.style_mid.value();
         let s_high = self.params.style_high.value();
+        let sag = self.params.sag.value();
+        let tight = self.params.tight.value();
         self.metal
-            .process_slice(input, drive, dist, s_low, s_mid, s_high);
+            .process_slice(input, drive, dist, sag, tight, s_low, s_mid, s_high);
         self.noise_gate.post_process(input);
     }
 }
