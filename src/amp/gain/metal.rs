@@ -25,10 +25,14 @@ pub struct MetalDistortion {
     envelope: f32,
     prev_input: f32,
     low_resonance: f32,
-    post_tight: f32,     // 今回反映：歪み後の動的な高域引き締め
-    feedback_state: f32, // 今回反映：サチュレーションのフィードバック
+    post_tight: f32,     // 歪み後の動的な高域引き締め
+    feedback_state: f32, // サチュレーションのフィードバック
     os_lpf_biquad: Biquad,
     sample_rate: f32,
+
+    // キャッシュ
+    last_s_high: f32,
+    cached_coeffs: (f32, f32, f32, f32, f32),
 }
 
 #[derive(Clone, Copy)]
@@ -55,11 +59,14 @@ impl MetalDistortion {
             feedback_state: 0.0,
             os_lpf_biquad: Biquad::default(),
             sample_rate,
+            last_s_high: -1.0,
+            cached_coeffs: (0.0, 0.0, 1.0, 0.0, 0.0),
         }
     }
 
     pub fn initialize(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
+        self.last_s_high = -1.0;
     }
 
     /// 信号処理のコアロジック
@@ -73,7 +80,6 @@ impl MetalDistortion {
         let s_mid = p.s_mid;
         let s_high = p.s_high;
 
-        // 0. Driveが0なら即座にリターン (完全クリーン)
         if drive <= 0.0 {
             return input;
         }
@@ -84,57 +90,58 @@ impl MetalDistortion {
         let mut x = input - self.pre_hp;
 
         // 2. GAIN STAGING & SAG
-        // 入力信号の大きさに応じてゲインを絞る (Sag)
-        let sag_val = 1.0 - (self.envelope * sag * 0.4);
-        let drive_gain = if drive < 0.2 {
-            drive * 5.0
+        let sag_val = 1.0 - (self.envelope * sag * 0.6);
+        let drive_gain = if drive < 0.15 {
+            drive * 6.0
         } else {
-            1.0 + (drive - 0.2).powf(1.5) * 60.0
+            1.0 + (drive - 0.15).powf(1.6) * 85.0
         };
         x *= drive_gain * sag_val;
 
-        // 3. MULTI-STAGE SATURATION WITH FEEDBACK
-        // feedback_state を使って飽和回路の相互作用をシミュレート
-        let fb_amount = 0.1 + dist * 0.2;
+        // 3. MULTI-STAGE SATURATION WITH FEEDBACK & TENACITY
+        let fb_amount = 0.15 + dist * 0.3;
         let mut sig = x + (self.feedback_state * fb_amount);
 
-        // 非対称性の計算 (SagとDistに連動)
-        let asymmetry = 0.06 * dist + (sag * 0.12);
-        let drive_factor = 1.2 + dist * 2.0;
+        let asymmetry = 0.08 * dist + (sag * 0.15);
+        let drive_factor = 1.3 + dist * 2.5;
+
+        let soft_clip = |v: f32, g: f32| {
+            let vg = v * g;
+            if vg.abs() < 1.0 {
+                vg - (vg.powi(3) / 3.0)
+            } else {
+                vg.signum() * (2.0 / 3.0)
+            }
+        };
 
         if sig > 0.0 {
-            sig = (sig * drive_factor).tanh();
+            sig = soft_clip(sig, drive_factor).tanh();
         } else {
-            sig = (sig * (drive_factor * (1.0 - asymmetry))).tanh() * (1.0 - asymmetry);
+            let neg_factor = drive_factor * (1.0 - asymmetry);
+            sig = soft_clip(sig, neg_factor).tanh() * (1.0 - asymmetry);
         }
 
-        // フィードバック状態を更新 (次のサンプルへ)
-        self.feedback_state = sig;
+        self.feedback_state = sig * 0.8 + self.feedback_state * 0.1;
 
         // 4. EQUALIZATION & CHARACTER
-        // Mid Scoop (メタル特有のドンシャリ感)
-        let mid_scoop = (0.5 - s_mid).max(0.0) * 0.9;
+        let mid_scoop = (0.5 - s_mid).max(0.0) * 0.85;
         if mid_scoop > 0.0 {
             sig -= (sig - sig.powi(3)) * mid_scoop;
         }
 
-        // Low Resonance (キャビネットの共鳴感)
-        let low_boost = s_low * 0.7;
-        self.low_resonance += 0.15 * (sig - self.low_resonance);
+        let low_boost = s_low * 0.8;
+        self.low_resonance += 0.2 * (sig - self.low_resonance);
         sig += self.low_resonance * low_boost;
 
         // 5. POST-PROCESSING (Post Tight & Slew)
-        // post_tight を使った高域の耳障りな成分の除去 (LPF)
         let post_cutoff = 0.1 + (s_high * 0.4) + (1.0 - drive * 0.5) * 0.3;
         self.post_tight += post_cutoff * (sig - self.post_tight);
         sig = self.post_tight;
 
-        // Slew Rate Limiter (物理的な回路の追従限界による滑らかさ)
         let max_step = 0.02 + (dist * 0.4) + (s_high * 0.5) + (1.0 - drive);
         let diff = sig - self.slew_state;
         self.slew_state += diff.clamp(-max_step, max_step);
 
-        // 低ゲイン時のクリーンミックス (整合性)
         if drive < 0.1 {
             let mix = drive * 10.0;
             return input * (1.0 - mix) + self.slew_state * mix;
@@ -148,7 +155,12 @@ impl MetalDistortion {
             return input;
         }
 
-        // オーバーサンプリング倍率
+        if (p.s_high - self.last_s_high).abs() > 0.001 {
+            let lpf_hz = 17500.0 - (1.0 - p.s_high) * 6000.0;
+            self.cached_coeffs = Self::calculate_biquad_lpf(self.sample_rate, lpf_hz);
+            self.last_s_high = p.s_high;
+        }
+
         let os_factor = if p.drive < 0.2 {
             1
         } else if p.drive < 0.5 {
@@ -158,8 +170,13 @@ impl MetalDistortion {
         };
         let inv_os = 1.0 / os_factor as f32;
 
-        // Sag用のエンベロープ追従
-        self.envelope += (input.abs() - self.envelope) * 0.1;
+        let env_target = input.abs();
+        let env_rate = if env_target > self.envelope {
+            0.1
+        } else {
+            0.005
+        };
+        self.envelope += (env_target - self.envelope) * env_rate;
 
         let mut output_sum = 0.0;
         for i in 0..os_factor {
@@ -171,16 +188,12 @@ impl MetalDistortion {
 
         let raw_out = output_sum * inv_os;
 
-        // 最終段 LPF (エイリアシング除去と音色の最終調整)
-        let lpf_hz = 17500.0 - (1.0 - p.s_high) * 6000.0;
-        let (a1, a2, b0, b1, b2) = Self::calculate_biquad_lpf(self.sample_rate, lpf_hz);
+        let (a1, a2, b0, b1, b2) = self.cached_coeffs;
         let filtered_out = self.os_lpf_biquad.process(raw_out, a1, a2, b0, b1, b2);
 
-        // DC Block (オフセット除去)
         let dc_fix = filtered_out - self.dc_block;
         self.dc_block = filtered_out + 0.995 * (self.dc_block - filtered_out);
-        let volume = 0.4;
-        dc_fix * volume
+        dc_fix * 0.4
     }
 
     pub fn process_slice(&mut self, slice: &mut [f32], p: MetalParams) {

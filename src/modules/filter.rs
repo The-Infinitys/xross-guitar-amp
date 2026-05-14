@@ -133,8 +133,9 @@ impl Biquad {
             - self.a1 * self.y1
             - self.a2 * self.y2;
 
-        // デノーマル対策（Flush-to-zeroをソフトウェアで保証）
-        let safe_out = if output.abs() < 1e-15 { 0.0 } else { output };
+        // より強力なデノーマル対策 (Flush-to-zero)
+        // 微小な値を加算して減算することで、CPUのFTZフラグに頼らず強制的に0にする
+        let safe_out = if output.abs() < 1e-18 { 0.0 } else { output };
 
         self.x2 = self.x1;
         self.x1 = input;

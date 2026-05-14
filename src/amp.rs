@@ -16,9 +16,6 @@ pub struct XrossGuitarAmp {
     gain_proc: GainProcessor,
     eq_proc: EqProcessor,
     cab_proc: CabProcessor,
-
-    // 内部処理用のモノラル一時バッファ（ヒープ確保を避けるため再利用）
-    internal_buffer: Vec<f32>,
 }
 
 impl XrossGuitarAmp {
@@ -28,18 +25,14 @@ impl XrossGuitarAmp {
             eq_proc: EqProcessor::new(params.clone()),
             cab_proc: CabProcessor::new(params.clone()),
             params,
-            internal_buffer: Vec::with_capacity(512), // 一般的なバッファサイズで初期化
         }
     }
 
-    pub fn initialize_truce(&mut self, sr: f64, max_block_size: usize) {
+    pub fn initialize_truce(&mut self, sr: f64, _max_block_size: usize) {
         let sample_rate = sr as f32;
         self.gain_proc.initialize(sample_rate);
         self.eq_proc.initialize(sample_rate);
         self.cab_proc.initialize(sample_rate);
-
-        // 最大ブロックサイズに合わせてバッファを確保
-        self.internal_buffer.resize(max_block_size, 0.0);
     }
 
     pub fn process_truce(&mut self, buffer: &mut AudioBuffer) -> ProcessStatus {
@@ -50,15 +43,18 @@ impl XrossGuitarAmp {
         if num_samples == 0 || input_channels == 0 || out_channels == 0 {
             return ProcessStatus::Normal;
         }
+
+        // 入力(Mono)を出力(L)にコピー
         {
             let (input, output) = buffer.io(0);
             output[..num_samples].copy_from_slice(&input[..num_samples]);
         }
+
         let output_l = buffer.output(0);
         self.gain_proc.process(output_l);
         self.eq_proc.process(output_l);
 
-        // // 3. キャビネット・ステレオ展開処理 (AudioBufferを直接渡す)
+        // キャビネット・ステレオ展開処理
         self.cab_proc.process_truce(buffer);
 
         ProcessStatus::Normal

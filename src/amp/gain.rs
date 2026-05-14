@@ -67,9 +67,5 @@ impl GainProcessor {
 
         self.metal.process_slice(input, metal_params);
         self.noise_gate.post_process(input);
-        let master_factor = 10.0f32.powf(self.params.master_gain.value() / 20.0);
-        input.iter_mut().for_each(|i| {
-            *i *= master_factor;
-        });
     }
 }
