@@ -4,12 +4,12 @@ use crate::params::XrossGuitarAmpParams;
 mod metal;
 use metal::MetalDistortion;
 mod noise_gate;
-use noise_gate::AutoNoiseGate;
+use noise_gate::NoiseGate;
 
 pub struct GainProcessor {
     pub params: Arc<XrossGuitarAmpParams>,
     metal: MetalDistortion,
-    noise_gate: AutoNoiseGate,
+    noise_gate: NoiseGate,
     sample_rate: f32,
 }
 
@@ -18,7 +18,7 @@ impl GainProcessor {
         Self {
             params,
             metal: MetalDistortion::new(44100.0),
-            noise_gate: AutoNoiseGate::new(44100.0),
+            noise_gate: NoiseGate::new(44100.0),
             sample_rate: 44100.0,
         }
     }
@@ -41,7 +41,11 @@ impl GainProcessor {
                 *i = 0.0;
             }
         });
-        self.noise_gate.pre_process(input);
+
+        // Noise Gate pre-processing with params
+        let gate_th = self.params.gate_threshold.value();
+        self.noise_gate.pre_process(input, gate_th);
+
         let input_factor = 10.0f32.powf(self.params.input_gain.value() / 20.0);
         input.iter_mut().for_each(|i| {
             *i *= input_factor;
@@ -66,6 +70,13 @@ impl GainProcessor {
         };
 
         self.metal.process_slice(input, metal_params);
-        self.noise_gate.post_process(input);
+
+        // Noise Gate post-processing with params
+        let gate_atk = self.params.gate_attack.value();
+        let gate_hold = self.params.gate_hold.value();
+        let gate_rel = self.params.gate_release.value();
+        let gate_range = self.params.gate_range.value();
+        self.noise_gate
+            .post_process(input, gate_atk, gate_hold, gate_rel, gate_range);
     }
 }

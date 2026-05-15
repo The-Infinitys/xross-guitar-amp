@@ -214,4 +214,83 @@ pub struct XrossGuitarAmpParams {
         smooth = "exp(50)"
     )]
     pub reverb_mix: FloatParam,
+
+    // --- 5. Noise Gate Section ---
+    #[param(
+        id = 24,
+        name = "Gate Threshold",
+        range = "linear(-100.0, 0.0)",
+        default = -60.0,
+        unit = "dB",
+        smooth = "exp(50)"
+    )]
+    pub gate_threshold: FloatParam,
+
+    #[param(
+        id = 25,
+        name = "Gate Release",
+        range = "linear(10.0, 500.0)",
+        default = 70.0,
+        unit = "ms",
+        smooth = "exp(50)"
+    )]
+    pub gate_release: FloatParam,
+
+    #[param(
+        id = 29,
+        name = "Gate Attack",
+        range = "linear(0.1, 10.0)",
+        default = 1.0,
+        unit = "ms",
+        smooth = "exp(50)"
+    )]
+    pub gate_attack: FloatParam,
+
+    #[param(
+        id = 30,
+        name = "Gate Hold",
+        range = "linear(0.0, 100.0)",
+        default = 10.0,
+        unit = "ms",
+        smooth = "exp(50)"
+    )]
+    pub gate_hold: FloatParam,
+
+    #[param(
+        id = 31,
+        name = "Gate Range",
+        range = "linear(-100.0, 0.0)",
+        default = -100.0,
+        unit = "dB",
+        smooth = "exp(50)"
+    )]
+    pub gate_range: FloatParam,
+
+    // --- 6. Detailed Cab Section ---
+    #[param(
+        id = 26,
+        name = "Cab Open Back",
+        range = "linear(0.0, 1.0)",
+        default = 0.0,
+        smooth = "exp(50)"
+    )]
+    pub cab_open_back: FloatParam,
+
+    #[param(
+        id = 27,
+        name = "Speaker Thump",
+        range = "linear(0.0, 1.0)",
+        default = 0.5,
+        smooth = "exp(50)"
+    )]
+    pub speaker_thump: FloatParam,
+
+    #[param(
+        id = 28,
+        name = "Speaker Sparkle",
+        range = "linear(0.0, 1.0)",
+        default = 0.5,
+        smooth = "exp(50)"
+    )]
+    pub speaker_sparkle: FloatParam,
 }

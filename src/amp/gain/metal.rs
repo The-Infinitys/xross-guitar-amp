@@ -193,7 +193,7 @@ impl MetalDistortion {
 
         let dc_fix = filtered_out - self.dc_block;
         self.dc_block = filtered_out + 0.995 * (self.dc_block - filtered_out);
-        dc_fix * 0.4
+        dc_fix * 0.6
     }
 
     pub fn process_slice(&mut self, slice: &mut [f32], p: MetalParams) {

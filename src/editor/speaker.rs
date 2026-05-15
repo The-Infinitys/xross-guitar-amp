@@ -18,10 +18,32 @@ impl<'a> SpeakerVisualizer<'a> {
 
         // --- パラメータ取得 ---
         let room_mix = self.params.room_mix.value();
+        let open_back = self.params.cab_open_back.value();
+        let thump = self.params.speaker_thump.value();
+        let sparkle = self.params.speaker_sparkle.value();
 
         // 1. 背景（ベース）
-        painter.rect_filled(rect, 8.0, Color32::from_rgb(10, 10, 10));
+        // Open Back の度合いによって背景の色味を変える（少しだけ背面が透けて見えるような演出）
+        let base_bg = Color32::from_rgb(
+            (10.0 + open_back * 15.0) as u8,
+            (10.0 + open_back * 10.0) as u8,
+            (10.0 + open_back * 20.0) as u8,
+        );
+        painter.rect_filled(rect, 8.0, base_bg);
+
         let painter = painter.with_clip_rect(rect);
+
+        // Open Back の反射光演出
+        if open_back > 0.01 {
+            let glow_color =
+                Color32::from_rgba_unmultiplied(100, 100, 150, (open_back * 40.0) as u8);
+            painter.rect_filled(
+                rect.shrink2(Vec2::new(open_back * 20.0, open_back * 10.0)),
+                8.0,
+                glow_color,
+            );
+        }
+
         if room_mix > 0.01 {
             let glow_steps = 12;
             for i in 0..glow_steps {
@@ -96,14 +118,36 @@ impl<'a> SpeakerVisualizer<'a> {
 
         for &pos in &positions {
             let unit_radius = speaker_radius_per * speaker_radius;
-            painter.circle_stroke(pos, unit_radius, Stroke::new(2.0, Color32::from_gray(60)));
+            // Thump: 枠線の太さを変える
+            let stroke_width = 1.5 + thump * 3.0;
+            painter.circle_stroke(
+                pos,
+                unit_radius,
+                Stroke::new(stroke_width, Color32::from_gray(60)),
+            );
             painter.circle_filled(pos, unit_radius * 0.9, Color32::from_gray(25));
-            painter.circle_filled(pos, unit_radius * 0.25, Color32::from_gray(45));
+
+            // Center Cap: Sparkle に応じて明るくする
+            let cap_brightness = (45.0 + sparkle * 60.0) as u8;
+            painter.circle_filled(pos, unit_radius * 0.25, Color32::from_gray(cap_brightness));
+
             painter.circle_stroke(
                 pos,
                 unit_radius * 0.45,
                 Stroke::new(1.0, Color32::from_gray(35)),
             );
+
+            // Sparkle: 小さな光の粒を描画
+            if sparkle > 0.3 {
+                let n_sparkles = (sparkle * 8.0) as usize;
+                let t = ui.input(|i| i.time as f32);
+                for i in 0..n_sparkles {
+                    let angle = (i as f32 * 2.3 + t * 2.0).sin() * std::f32::consts::TAU;
+                    let dist = unit_radius * 0.15;
+                    let spark_pos = pos + Vec2::new(angle.cos(), angle.sin()) * dist;
+                    painter.circle_filled(spark_pos, 1.0, Color32::from_white_alpha(180));
+                }
+            }
         }
 
         self.draw_mic(

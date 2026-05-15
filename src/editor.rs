@@ -38,7 +38,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                 bg.draw(ui);
 
                 let mut color_idx = 0;
-                let total_knobs = 15;
+                let total_knobs = 18;
 
                 // 外周の余白をさらにタイトに (20, 15 -> 12, 10)
                 let container_rect = ui.max_rect().shrink2(Vec2::new(12.0, 10.0));
@@ -47,17 +47,17 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                     ui.vertical(|ui| {
                         // --- ヘッダー（ロゴ） ---
                         ui.vertical_centered(|ui| {
-                            Logo::draw(ui, 30.0); // さらに小型化
+                            Logo::draw(ui, 30.0);
                         });
-                        ui.add_space(2.0); // 隙間を最小限に
+                        ui.add_space(4.0);
 
                         // --- 上段: アンプヘッド (コントロール類) ---
                         ui.horizontal_top(|ui| {
-                            ui.spacing_mut().item_spacing.x = 2.0; // セクション間を詰める
+                            ui.spacing_mut().item_spacing.x = 2.0;
 
-                            draw_section_weighted(ui, "GAIN", 3.0, |ui| {
+                            draw_section_weighted(ui, "GAIN", 3.25, |ui| {
                                 ui.horizontal(|ui| {
-                                    ui.spacing_mut().item_spacing.x = 2.0; // ノブ間を極限まで詰める
+                                    ui.spacing_mut().item_spacing.x = 2.0;
                                     for k in [
                                         &params.input_gain,
                                         &params.drive,
@@ -73,7 +73,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                                 });
                             });
 
-                            draw_section_weighted(ui, "EQUALIZER", 5.0, |ui| {
+                            draw_section_weighted(ui, "EQ & TONE", 5.0, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().item_spacing.x = 2.0;
                                     for k in [
@@ -99,7 +99,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                                 });
                             });
 
-                            draw_section_weighted(ui, "EFFECT", 3.0, |ui| {
+                            draw_section_weighted(ui, "FX", 2.5, |ui| {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().item_spacing.x = 2.0;
                                     for k in [&params.sag, &params.tight, &params.reverb_mix] {
@@ -113,11 +113,29 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                             });
                         });
 
-                        ui.add_space(6.0); // 段落間のスペース
+                        ui.add_space(4.0);
+
+                        // --- 中段: Noise Gate (横長セクション) ---
+                        draw_section_with_height(ui, "NOISE GATE", 0.0, |ui| {
+                            ui.columns(5, |cols| {
+                                let gate_color = Color32::from_rgb(100, 200, 100);
+                                let gate_params = [
+                                    &params.gate_threshold,
+                                    &params.gate_attack,
+                                    &params.gate_hold,
+                                    &params.gate_release,
+                                    &params.gate_range,
+                                ];
+                                for (i, p) in gate_params.iter().enumerate() {
+                                    cols[i].add(LinearSlider::new(p, gate_color));
+                                }
+                            });
+                        });
+
+                        ui.add_space(4.0);
 
                         // --- 下段: キャビネットセクション ---
-                        // 高さが足りない場合に備え、最低限の高さを確保しつつ余白を使う
-                        let cab_height = ui.available_height().at_most(400.0);
+                        let cab_height = ui.available_height().at_most(300.0);
                         draw_section_with_height(
                             ui,
                             "CABINET & DUAL MICROPHONES",
@@ -125,7 +143,7 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                             |ui| {
                                 ui.vertical(|ui| {
                                     ui.horizontal(|ui| {
-                                        ui.spacing_mut().item_spacing.x = 15.0; // 横の密度を上げる
+                                        ui.spacing_mut().item_spacing.x = 10.0;
 
                                         let mic_colors = [
                                             Color32::from_rgb(0, 180, 255),
@@ -152,11 +170,41 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
 
                                         ui.vertical(|ui| {
                                             ui.label(
-                                                egui::RichText::new("Cab/Room").strong().size(10.0),
+                                                egui::RichText::new("Physical").strong().size(10.0),
                                             );
                                             ui.add(LinearSlider::new(
                                                 &params.speaker_size,
                                                 Color32::GOLD,
+                                            ));
+                                            ui.add(LinearSlider::new(
+                                                &params.cab_open_back,
+                                                Color32::from_rgb(180, 150, 255),
+                                            ));
+                                        });
+
+                                        ui.vertical(|ui| {
+                                            ui.label(
+                                                egui::RichText::new("Speaker Detail")
+                                                    .strong()
+                                                    .size(10.0),
+                                            );
+                                            ui.add(LinearSlider::new(
+                                                &params.speaker_thump,
+                                                Color32::from_rgb(255, 80, 80),
+                                            ));
+                                            ui.add(LinearSlider::new(
+                                                &params.speaker_sparkle,
+                                                Color32::from_rgb(100, 255, 100),
+                                            ));
+                                        });
+
+                                        ui.vertical(|ui| {
+                                            ui.label(
+                                                egui::RichText::new("Room/Mix").strong().size(10.0),
+                                            );
+                                            ui.add(LinearSlider::new(
+                                                &params.room_size,
+                                                Color32::WHITE,
                                             ));
                                             ui.add(LinearSlider::new(
                                                 &params.room_mix,
@@ -192,7 +240,6 @@ pub fn create_editor(params: Arc<XrossGuitarAmpParams>) -> Box<dyn Editor> {
                                     ui.add_space(4.0);
                                     ui.separator();
 
-                                    // ビジュアライザーも少し控えめなサイズに
                                     let visualizer_area = ui.available_height() - 5.0;
                                     ui.vertical_centered(|ui| {
                                         SpeakerVisualizer::new(&params)
