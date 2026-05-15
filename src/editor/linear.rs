@@ -115,7 +115,9 @@ impl<'a> Widget for LinearSlider<'a> {
 
                 if res.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     if let Ok(parsed) = value_text.parse::<f64>() {
-                        self.param.set_value(parsed);
+                        self.param.set_value(
+                            parsed.clamp(self.param.info.range.min(), self.param.info.range.max()),
+                        );
                     }
                     ui.memory_mut(|mem| {
                         mem.data.insert_temp(text_edit_id, false);

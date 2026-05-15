@@ -3,6 +3,10 @@ use truce::prelude::*;
 
 impl PluginLogic for XrossGuitarAmp {
     fn reset(&mut self, sample_rate: f64, max_block_size: usize) {
+        let params = self.params();
+        params.set_sample_rate(sample_rate);
+        params.snap_smoothers();
+
         self.initialize_truce(sample_rate, max_block_size);
     }
 

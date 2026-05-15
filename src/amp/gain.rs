@@ -25,14 +25,17 @@ impl GainProcessor {
 
     pub fn initialize(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
-        self.metal.initialize(sample_rate);
         self.reset();
+        self.metal.initialize(sample_rate);
+        self.noise_gate.initialize(sample_rate);
     }
     pub fn reset(&mut self) {
         let p = self.params.clone();
         let sr = self.sample_rate;
         *self = Self::new(p);
         self.sample_rate = sr;
+        self.metal.initialize(sr);
+        self.noise_gate.initialize(sr);
     }
 
     pub fn process(&mut self, input: &mut [f32]) {

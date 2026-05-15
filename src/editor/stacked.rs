@@ -101,7 +101,7 @@ impl<'a> StackedKnob<'a> {
             }
             if res.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                 if let Ok(v) = val_str.parse::<f64>() {
-                    p.set_value(v);
+                    p.set_value(v.clamp(p.info.range.min(), p.info.range.max()));
                 }
                 ui.memory_mut(|m| m.data.insert_temp(edit_id, false));
                 return false;

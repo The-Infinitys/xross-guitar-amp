@@ -21,6 +21,10 @@ pub struct NoiseGate {
 }
 
 impl NoiseGate {
+    pub fn initialize(&mut self, sample_rate: f32) {
+        self.sample_rate = sample_rate;
+    }
+
     pub fn new(sample_rate: f32) -> Self {
         let state = GateState {
             gate_gain: 1.0,

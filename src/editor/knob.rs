@@ -43,6 +43,7 @@ impl<'a> Widget for Knob<'a> {
         let id = response.id;
         let text_edit_id = id.with("edit_mode");
         let edit_string_id = id.with("edit_str");
+        let is_editing = ui.memory(|mem| mem.data.get_temp::<bool>(text_edit_id).unwrap_or(false));
 
         // インタラクション: ダブルクリックでデフォルト値
         if response.double_clicked() {
@@ -50,7 +51,7 @@ impl<'a> Widget for Knob<'a> {
         }
 
         // ドラッグ操作
-        if response.dragged() {
+        if response.dragged() && !is_editing {
             let delta = -response.drag_delta().y * 0.006;
             let new_norm = (self.param.value_normalized() + delta as f64).clamp(0.0, 1.0);
             self.param.set_value_normalized(new_norm);
@@ -112,8 +113,6 @@ impl<'a> Widget for Knob<'a> {
             // C. 数値表示エリア
             let value_rect =
                 Rect::from_center_size(center + vec2(0.0, radius + 20.0), vec2(rect.width(), 14.0));
-            let is_editing =
-                ui.memory(|mem| mem.data.get_temp::<bool>(text_edit_id).unwrap_or(false));
 
             if is_editing {
                 let mut value_text = ui.memory(|mem| {
@@ -135,7 +134,9 @@ impl<'a> Widget for Knob<'a> {
                 }
                 if res.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     if let Ok(p) = value_text.parse::<f64>() {
-                        self.param.set_value(p);
+                        self.param.set_value(
+                            p.clamp(self.param.info.range.min(), self.param.info.range.max()),
+                        );
                     }
                     ui.memory_mut(|mem| mem.data.insert_temp(text_edit_id, false));
                 } else {
@@ -172,7 +173,7 @@ impl<'a> Widget for Knob<'a> {
             }
         }
 
-        if response.dragged() {
+        if response.dragged() || is_editing {
             ui.ctx().request_repaint();
         }
         response
