@@ -42,7 +42,7 @@ jobs:
 
       # CLAP, VST3, およびOS個別のフォーマットをビルド
       - name: Build and Bundle
-        run: cargo truce build --release
+        run: cargo truce build
 
       - name: Package Artifacts
         run: |
