@@ -1,0 +1,82 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact-name: linux-plugins
+          - os: windows-latest
+            artifact-name: windows-plugins
+          - os: macos-latest
+            artifact-name: macos-plugins
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Linux/macOS用の依存ライブラリ(LV2/AU用)のインストール
+      - name: Install Dependencies
+        if: runner.os != 'Windows'
+        run: |
+          if [ "${{ runner.os }}" == "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y libasound2-dev libjack-jackd2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libgl1-mesa-dev liblilv-dev
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            brew install lilv
+          fi
+
+      - name: Install cargo-truce
+        run: cargo install --git https://github.com/truce-audio/truce cargo-truce
+
+      # CLAP, VST3, およびOS個別のフォーマットをビルド
+      - name: Build and Bundle
+        run: cargo truce build --release
+
+      - name: Package Artifacts
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            powershell Compress-Archive -Path target/truce/* -DestinationPath ${{ matrix.artifact-name }}.zip
+          else
+            zip -r ${{ matrix.artifact-name }}.zip target/truce/*
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-name }}.zip
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # タグ名に「-」が含まれていたら自動的に「Pre-release」として作成する
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            linux-plugins/linux-plugins.zip
+            windows-plugins/windows-plugins.zip
+            macos-plugins/macos-plugins.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
