@@ -13,15 +13,9 @@ impl PluginLogic for XrossGuitarAmp {
     fn process(
         &mut self,
         buffer: &mut AudioBuffer,
-        events: &EventList,
+        _events: &EventList,
         _context: &mut ProcessContext,
     ) -> ProcessStatus {
-        events.iter().map(|event| &event.body).for_each(|event| {
-            if let EventBody::ParamChange { id, value } = event {
-                self.params().set_normalized(*id, *value);
-            }
-        });
-
         self.process_truce(buffer)
     }
 
