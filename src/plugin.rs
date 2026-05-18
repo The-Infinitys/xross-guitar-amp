@@ -22,4 +22,11 @@ impl PluginLogic for XrossGuitarAmp {
     fn custom_editor(&self) -> Option<Box<dyn Editor>> {
         Some(self.ui())
     }
+    fn bus_layouts() -> Vec<BusLayout> {
+        vec![
+            BusLayout::new()
+                .with_input("Main Input", ChannelConfig::Mono)
+                .with_output("Main Output", ChannelConfig::Stereo),
+        ]
+    }
 }
