@@ -2,6 +2,7 @@ use truce::params::FloatParamReadF32;
 
 use crate::modules::filter::{Biquad, FilterType};
 use crate::params::XrossGuitarAmpParams;
+use crate::utils::ParamChangeDetector;
 use std::sync::Arc;
 
 pub struct EqProcessor {
@@ -14,8 +15,8 @@ pub struct EqProcessor {
     presence_filter: Biquad,
     resonance_filter: Biquad,
 
-    // パラメータ変更検知用キャッシュ
-    last_eq_values: [f32; 5],
+    // パラメータ変更検知用
+    detector: ParamChangeDetector<5>,
 }
 
 impl EqProcessor {
@@ -28,7 +29,7 @@ impl EqProcessor {
             high_filter: Biquad::new(sr),
             presence_filter: Biquad::new(sr),
             resonance_filter: Biquad::new(sr),
-            last_eq_values: [-999.0; 5],
+            detector: ParamChangeDetector::new(0.01),
         }
     }
 
@@ -47,24 +48,21 @@ impl EqProcessor {
         self.high_filter.reset();
         self.presence_filter.reset();
         self.resonance_filter.reset();
-        self.last_eq_values = [-999.0; 5];
+        self.detector = ParamChangeDetector::new(0.01);
     }
 
     /// パラメータの変更をチェックし、必要であれば係数を更新する
     fn update_coefficients_if_needed(&mut self) {
-        let l = self.params.eq_low.value();
-        let m = self.params.eq_mid.value();
-        let h = self.params.eq_high.value();
-        let p = self.params.presence.value();
-        let r = self.params.resonance.value();
+        let values = [
+            self.params.eq_low.value(),
+            self.params.eq_mid.value(),
+            self.params.eq_high.value(),
+            self.params.presence.value(),
+            self.params.resonance.value(),
+        ];
 
-        // 差分チェック
-        if (l - self.last_eq_values[0]).abs() > 0.01
-            || (m - self.last_eq_values[1]).abs() > 0.01
-            || (h - self.last_eq_values[2]).abs() > 0.01
-            || (p - self.last_eq_values[3]).abs() > 0.01
-            || (r - self.last_eq_values[4]).abs() > 0.01
-        {
+        if self.detector.is_changed(values) {
+            let [l, m, h, p, r] = values;
             // Low: 150Hz
             self.low_filter
                 .set_params(FilterType::LowShelf(l), 150.0, 0.707);
@@ -84,8 +82,6 @@ impl EqProcessor {
             // Resonance: 80Hz
             self.resonance_filter
                 .set_params(FilterType::Peaking(r), 80.0, 1.5);
-
-            self.last_eq_values = [l, m, h, p, r];
         }
     }
 

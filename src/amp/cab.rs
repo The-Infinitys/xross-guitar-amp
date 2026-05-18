@@ -1,5 +1,6 @@
 use crate::modules::filter::{Biquad, FilterType};
 use crate::params::XrossGuitarAmpParams;
+use crate::utils::ParamChangeDetector;
 use std::sync::Arc;
 use truce::core::AudioBuffer;
 use truce::params::FloatParamReadF32;
@@ -38,7 +39,7 @@ pub struct CabProcessor {
     // 動的パラメータの状態
     envelope: f32,
     sample_rate: f32,
-    last_params: [f32; 12],
+    detector: ParamChangeDetector<12>,
 }
 
 impl CabProcessor {
@@ -60,7 +61,7 @@ impl CabProcessor {
             write_idx_room: 0,
             envelope: 0.0,
             sample_rate: sr,
-            last_params: [-1.0; 12],
+            detector: ParamChangeDetector::new(0.0001),
         }
     }
 
@@ -99,11 +100,12 @@ impl CabProcessor {
         self.phase_delay_line.fill(0.0);
         self.room_buffer.fill(0.0);
         self.envelope = 0.0;
+        self.detector = ParamChangeDetector::new(0.0001);
     }
 
     fn update_coefficients_if_needed(&mut self) {
         let p = &self.params;
-        let current = [
+        let values = [
             p.speaker_size.value(),
             p.speaker_count.value_f32(),
             p.resonance.value(),
@@ -118,11 +120,7 @@ impl CabProcessor {
             p.master_gain.value(),
         ];
 
-        if current
-            .iter()
-            .enumerate()
-            .all(|(i, &v)| (v - self.last_params[i]).abs() < 0.0001)
-        {
+        if !self.detector.is_changed(values) {
             return;
         }
 
@@ -139,7 +137,7 @@ impl CabProcessor {
             thump,
             sparkle,
             _,
-        ] = current;
+        ] = values;
         let res_scale = 1.0 + res * 0.1;
 
         // 1. 筐体の多段共鳴 (物理的体積に基づく)
@@ -187,8 +185,6 @@ impl CabProcessor {
         self.thump_dynamic
             .set_params(FilterType::Peaking(2.0 + thump * 3.0), 85.0, 1.2);
         self.fiz_cut_update(sparkle);
-
-        self.last_params = current;
     }
 
     fn fiz_cut_update(&mut self, sparkle: f32) {
@@ -209,89 +205,97 @@ impl CabProcessor {
             .clamp(0.0, PHASE_DELAY_SIZE as f32 - 1.0);
         let (d_int, d_frac) = (delay_samples as usize, delay_samples.fract());
 
-        for i in 0..buffer.num_samples() {
-            let mut sig = buffer.output(0)[i];
+        let num_samples = buffer.num_samples();
+        let num_channels = buffer.num_output_channels();
 
-            // --- 物理的非線形エミュレーション ---
-            // 1. エンベロープ・フォロワー (応答の速いスピーカーの挙動)
-            let target_env = sig.abs();
-            self.envelope += (target_env - self.envelope)
-                * if target_env > self.envelope {
-                    0.1
-                } else {
-                    0.001
-                };
+        for i in 0..num_samples {
+            let input_sig = buffer.output(0)[i];
+            let (l, r) = self.process_sample(input_sig, d_int, d_frac, room_mix);
 
-            // 2. スピーカーの物理的サチュレーション (Soft Clipping)
-            // 強い入力に対して、低域の制動がかかる様子を再現
-            let drive = 1.0 + self.envelope * 0.5;
-            sig = (sig * drive).tanh() / drive;
+            let l_final = l * master_gain;
+            let r_final = r * master_gain;
 
-            // --- フィルターチェーン ---
-            for res in &mut self.body_resonators {
-                sig = res.process(sig);
-            }
-            for cone in &mut self.cone_character {
-                sig = cone.process(sig);
-            }
-
-            // --- マイク・パス ---
-            let mut sig_a = sig;
-            for f in &mut self.mic_a_tone {
-                sig_a = f.process(sig_a);
-            }
-
-            let mut sig_b = sig;
-            for f in &mut self.mic_b_tone {
-                sig_b = f.process(sig_b);
-            }
-
-            // 分散位相 (Delay Line)
-            self.phase_delay_line[self.write_idx_phase] = sig_b;
-            let r1 = (self.write_idx_phase + PHASE_DELAY_SIZE - d_int) & PHASE_DELAY_MASK;
-            let r2 = (r1 + PHASE_DELAY_SIZE - 1) & PHASE_DELAY_MASK;
-            sig_b = self.phase_delay_line[r1] * (1.0 - d_frac) + self.phase_delay_line[r2] * d_frac;
-            self.write_idx_phase = (self.write_idx_phase + 1) & PHASE_DELAY_MASK;
-
-            // --- ステレオ・イメージング ---
-            // マイクの位相差を利用して広がりを作る
-            let mut out_l = sig_a * 0.6 + sig_b * 0.4;
-            let mut out_r = sig_a * 0.6 - sig_b * 0.3;
-
-            // --- 最終動的補正 ---
-            // Thump Dynamic: 強いアタック時に低域を少し「押し出す」
-            let dynamic_gain = 1.0 + (self.envelope * 0.2);
-            out_l = self.thump_dynamic.process(out_l * dynamic_gain) / dynamic_gain;
-            out_r = self.thump_dynamic.process(out_r * dynamic_gain) / dynamic_gain;
-
-            out_l = self.tight_shaper.process(out_l);
-            out_r = self.tight_shaper.process(out_r);
-            out_l = self.fizzy_cut.process(out_l);
-            out_r = self.fizzy_cut.process(out_r);
-
-            // --- Room Reflection (簡易的な初期反射) ---
-            if room_mix > 0.0 {
-                let delay_time = (0.02 * self.sample_rate) as usize;
-                let read_idx = (self.write_idx_room + MAX_ROOM_DELAY - delay_time) % MAX_ROOM_DELAY;
-                let reflection = self.room_buffer[read_idx] * 0.5;
-
-                out_l += reflection * room_mix;
-                out_r -= reflection * room_mix; // 位相反転で広げる
-
-                self.room_buffer[self.write_idx_room] = (out_l + out_r) * 0.5;
-                self.write_idx_room = (self.write_idx_room + 1) % MAX_ROOM_DELAY;
-            }
-
-            // 出力適用
-            out_l *= master_gain;
-            out_r *= master_gain;
-
-            if buffer.num_output_channels() >= 2 {
-                buffer.output(0)[i] = out_l;
-                buffer.output(1)[i] = out_r;
+            buffer.output(0)[i] = if num_channels >= 2 {
+                buffer.output(1)[i] = r_final;
+                l_final
             } else {
-                buffer.output(0)[i] = (out_l + out_r) * 0.5;
-            }
+                (l_final + r_final) * 0.5
+            };
         }
+    }
+
+    #[inline]
+    fn process_sample(&mut self, mut sig: f32, d_int: usize, d_frac: f32, room_mix: f32) -> (f32, f32) {
+        // --- 物理的非線形エミュレーション ---
+        // 1. エンベロープ・フォロワー (応答の速いスピーカーの挙動)
+        let target_env = sig.abs();
+        self.envelope += (target_env - self.envelope)
+            * if target_env > self.envelope {
+                0.1
+            } else {
+                0.001
+            };
+
+        // 2. スピーカーの物理的サチュレーション (Soft Clipping)
+        // 強い入力に対して、低域の制動がかかる様子を再現
+        let drive = 1.0 + self.envelope * 0.5;
+        sig = (sig * drive).tanh() / drive;
+
+        // --- フィルターチェーン ---
+        for res in &mut self.body_resonators {
+            sig = res.process(sig);
+        }
+        for cone in &mut self.cone_character {
+            sig = cone.process(sig);
+        }
+
+        // --- マイク・パス ---
+        let mut sig_a = sig;
+        for f in &mut self.mic_a_tone {
+            sig_a = f.process(sig_a);
+        }
+
+        let mut sig_b = sig;
+        for f in &mut self.mic_b_tone {
+            sig_b = f.process(sig_b);
+        }
+
+        // 分散位相 (Delay Line)
+        self.phase_delay_line[self.write_idx_phase] = sig_b;
+        let r1 = (self.write_idx_phase + PHASE_DELAY_SIZE - d_int) & PHASE_DELAY_MASK;
+        let r2 = (r1 + PHASE_DELAY_SIZE - 1) & PHASE_DELAY_MASK;
+        sig_b = self.phase_delay_line[r1] * (1.0 - d_frac) + self.phase_delay_line[r2] * d_frac;
+        self.write_idx_phase = (self.write_idx_phase + 1) & PHASE_DELAY_MASK;
+
+        // --- ステレオ・イメージング ---
+        // マイクの位相差を利用して広がりを作る
+        let mut out_l = sig_a * 0.6 + sig_b * 0.4;
+        let mut out_r = sig_a * 0.6 - sig_b * 0.3;
+
+        // --- 最終動的補正 ---
+        // Thump Dynamic: 強いアタック時に低域を少し「押し出す」
+        let dynamic_gain = 1.0 + (self.envelope * 0.2);
+        out_l = self.thump_dynamic.process(out_l * dynamic_gain) / dynamic_gain;
+        out_r = self.thump_dynamic.process(out_r * dynamic_gain) / dynamic_gain;
+
+        out_l = self.tight_shaper.process(out_l);
+        out_r = self.tight_shaper.process(out_r);
+        out_l = self.fizzy_cut.process(out_l);
+        out_r = self.fizzy_cut.process(out_r);
+
+        // --- Room Reflection (簡易的な初期反射) ---
+        if room_mix > 0.0 {
+            let delay_time = (0.02 * self.sample_rate) as usize;
+            let read_idx = (self.write_idx_room + MAX_ROOM_DELAY - delay_time) % MAX_ROOM_DELAY;
+            let reflection = self.room_buffer[read_idx] * 0.5;
+
+            out_l += reflection * room_mix;
+            out_r -= reflection * room_mix; // 位相反転で広げる
+
+            self.room_buffer[self.write_idx_room] = (out_l + out_r) * 0.5;
+            self.write_idx_room = (self.write_idx_room + 1) % MAX_ROOM_DELAY;
+        }
+
+        (out_l, out_r)
     }
 }

@@ -18,6 +18,35 @@ impl FloatParamNormalizedExt for FloatParam {
         self.set_value(val);
     }
 }
+
+pub struct ParamChangeDetector<const N: usize> {
+    last_values: [f32; N],
+    tolerance: f32,
+}
+
+impl<const N: usize> ParamChangeDetector<N> {
+    pub fn new(tolerance: f32) -> Self {
+        Self {
+            last_values: [-999.0; N],
+            tolerance,
+        }
+    }
+
+    pub fn is_changed(&mut self, new_values: [f32; N]) -> bool {
+        let mut changed = false;
+        for i in 0..N {
+            if (new_values[i] - self.last_values[i]).abs() > self.tolerance {
+                changed = true;
+                break;
+            }
+        }
+        if changed {
+            self.last_values = new_values;
+        }
+        changed
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

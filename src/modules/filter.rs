@@ -155,4 +155,12 @@ impl Biquad {
     pub fn set_sample_rate(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
     }
+
+    pub fn set_coeffs(&mut self, a1: f32, a2: f32, b0: f32, b1: f32, b2: f32) {
+        self.a1 = a1;
+        self.a2 = a2;
+        self.b0 = b0;
+        self.b1 = b1;
+        self.b2 = b2;
+    }
 }

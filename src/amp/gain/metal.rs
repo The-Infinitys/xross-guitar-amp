@@ -1,21 +1,5 @@
 use std::f32::consts::PI;
-
-/// 2次フィルタ（Biquad）の状態保持用
-#[derive(Default, Clone, Copy)]
-pub struct Biquad {
-    z1: f32,
-    z2: f32,
-}
-
-impl Biquad {
-    #[inline(always)]
-    fn process(&mut self, input: f32, a1: f32, a2: f32, b0: f32, b1: f32, b2: f32) -> f32 {
-        let out = b0 * input + self.z1;
-        self.z1 = b1 * input - a1 * out + self.z2;
-        self.z2 = b2 * input - a2 * out;
-        out
-    }
-}
+use crate::modules::filter::Biquad;
 
 pub struct MetalDistortion {
     // 内部フィルタ・状態変数
@@ -57,7 +41,7 @@ impl MetalDistortion {
             low_resonance: 0.0,
             post_tight: 0.0,
             feedback_state: 0.0,
-            os_lpf_biquad: Biquad::default(),
+            os_lpf_biquad: Biquad::new(sample_rate),
             sample_rate,
             last_s_high: -1.0,
             cached_coeffs: (0.0, 0.0, 1.0, 0.0, 0.0),
@@ -66,6 +50,7 @@ impl MetalDistortion {
 
     pub fn initialize(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
+        self.os_lpf_biquad.set_sample_rate(sample_rate);
         self.last_s_high = -1.0;
     }
 
@@ -189,7 +174,8 @@ impl MetalDistortion {
         let raw_out = output_sum * inv_os;
 
         let (a1, a2, b0, b1, b2) = self.cached_coeffs;
-        let filtered_out = self.os_lpf_biquad.process(raw_out, a1, a2, b0, b1, b2);
+        self.os_lpf_biquad.set_coeffs(a1, a2, b0, b1, b2);
+        let filtered_out = self.os_lpf_biquad.process(raw_out);
 
         let dc_fix = filtered_out - self.dc_block;
         self.dc_block = filtered_out + 0.995 * (self.dc_block - filtered_out);
