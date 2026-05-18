@@ -1,4 +1,4 @@
-use truce::params::FloatParam;
+use truce::params::{FloatParam, FloatParamReadF64};
 
 pub trait FloatParamNormalizedExt {
     fn value_normalized(&self) -> f64;
@@ -21,16 +21,19 @@ impl FloatParamNormalizedExt for FloatParam {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use truce::params::{FloatParam, ParamFlags, ParamInfo, ParamRange, ParamUnit, SmoothingStyle};
+    use truce::params::{
+        FloatParam, ParamFlags, ParamInfo, ParamRange, ParamUnit, ParamValueKind, SmoothingStyle,
+    };
 
     // ヘルパー: テスト用のFloatParamを作成
     fn create_test_param(min: f64, max: f64, default: f64) -> FloatParam {
         FloatParam::new(
             ParamInfo {
-                id: 1,              // u32型なので数値を直接指定
-                name: "Test Param", // &str型
-                short_name: "Test", // Optionではなく&str
-                group: "",          // Optionではなく&str
+                id: 1,
+                kind: truce::params::ParamValueKind::Float, // u32型なので数値を直接指定
+                name: "Test Param",                         // &str型
+                short_name: "Test",                         // Optionではなく&str
+                group: "",                                  // Optionではなく&str
                 range: ParamRange::Linear { min, max },
                 default_plain: default,
                 unit: ParamUnit::Db,
@@ -76,6 +79,7 @@ mod tests {
         let param = FloatParam::new(
             ParamInfo {
                 id: 2,
+                kind: ParamValueKind::Float,
                 name: "Freq",
                 short_name: "",
                 group: "",

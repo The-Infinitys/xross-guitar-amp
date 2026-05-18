@@ -1,5 +1,6 @@
 use crate::params::XrossGuitarAmpParams;
 use egui::{self, Color32, Pos2, Stroke, Vec2};
+use truce::params::FloatParamReadF64;
 
 pub struct SpeakerVisualizer<'a> {
     params: &'a XrossGuitarAmpParams,
@@ -17,10 +18,10 @@ impl<'a> SpeakerVisualizer<'a> {
         let center = rect.center();
 
         // --- パラメータ取得 ---
-        let room_mix = self.params.room_mix.value();
-        let open_back = self.params.cab_open_back.value();
-        let thump = self.params.speaker_thump.value();
-        let sparkle = self.params.speaker_sparkle.value();
+        let room_mix = self.params.room_mix.value() as f32;
+        let open_back = self.params.cab_open_back.value() as f32;
+        let thump = self.params.speaker_thump.value() as f32;
+        let sparkle = self.params.speaker_sparkle.value() as f32;
 
         // 1. 背景（ベース）
         // Open Back の度合いによって背景の色味を変える（少しだけ背面が透けて見えるような演出）
@@ -70,7 +71,7 @@ impl<'a> SpeakerVisualizer<'a> {
 
         let mut positions = Vec::new();
         let max_speaker_radius = self.params.speaker_size.info.range.max() as f32;
-        let speaker_radius_per = self.params.speaker_size.value() / max_speaker_radius;
+        let speaker_radius_per = self.params.speaker_size.value() as f32 / max_speaker_radius;
         let speaker_radius = match count {
             1 => {
                 positions.push(center);
@@ -154,8 +155,8 @@ impl<'a> SpeakerVisualizer<'a> {
             ui,
             center,
             width / 5.0,
-            -self.params.mic_a_axis.value(),
-            self.params.mic_a_distance.value(),
+            (-self.params.mic_a_axis.value()) as f32,
+            self.params.mic_a_distance.value() as f32,
             Color32::from_rgb(0, 180, 255),
         );
 
@@ -163,8 +164,8 @@ impl<'a> SpeakerVisualizer<'a> {
             ui,
             center,
             width / 5.0,
-            self.params.mic_b_axis.value(),
-            self.params.mic_b_distance.value(),
+            self.params.mic_b_axis.value() as f32,
+            self.params.mic_b_distance.value() as f32,
             Color32::from_rgb(255, 100, 0),
         );
     }
@@ -203,7 +204,7 @@ impl<'a> SpeakerVisualizer<'a> {
             mic_radius,
             Color32::from_black_alpha(100),
         );
-        let room_mix = self.params.room_mix.value();
+        let room_mix = self.params.room_mix.value() as f32;
         if room_mix > 0.1 {
             for i in 1..=3 {
                 let t = i as f32 / 3.0;

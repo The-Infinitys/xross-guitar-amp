@@ -2,6 +2,7 @@ use crate::modules::filter::{Biquad, FilterType};
 use crate::params::XrossGuitarAmpParams;
 use std::sync::Arc;
 use truce::core::AudioBuffer;
+use truce::params::FloatParamReadF32;
 
 const PHASE_DELAY_SIZE: usize = 2048;
 const PHASE_DELAY_MASK: usize = PHASE_DELAY_SIZE - 1;
@@ -104,7 +105,7 @@ impl CabProcessor {
         let p = &self.params;
         let current = [
             p.speaker_size.value(),
-            p.speaker_count.value() as f32,
+            p.speaker_count.value_f32(),
             p.resonance.value(),
             p.presence.value(),
             p.mic_a_distance.value(),

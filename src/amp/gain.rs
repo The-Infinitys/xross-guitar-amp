@@ -5,6 +5,7 @@ mod metal;
 use metal::MetalDistortion;
 mod noise_gate;
 use noise_gate::NoiseGate;
+use truce::params::FloatParamReadF32;
 
 pub struct GainProcessor {
     pub params: Arc<XrossGuitarAmpParams>,

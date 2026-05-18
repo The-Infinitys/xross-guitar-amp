@@ -1,3 +1,5 @@
+use truce::params::FloatParamReadF32;
+
 use crate::modules::filter::{Biquad, FilterType};
 use crate::params::XrossGuitarAmpParams;
 use std::sync::Arc;
