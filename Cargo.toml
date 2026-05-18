@@ -17,6 +17,7 @@ default = ["clap", "vst3", "standalone"]
 clap = ["dep:truce-clap", "dep:clap-sys"]
 vst3 = ["dep:truce-vst3"]
 lv2 = ["dep:truce-lv2"]
+au = ["dep:truce-au"]
 standalone = ["dep:truce-standalone"]
 shell = ["truce/shell"]
 
@@ -24,6 +25,7 @@ shell = ["truce/shell"]
 truce = { git = "https://github.com/truce-audio/truce", tag = "v0.18.4" }
 truce-egui = { git = "https://github.com/truce-audio/truce", tag = "v0.18.4" }
 truce-gui = { git = "https://github.com/truce-audio/truce", tag = "v0.18.4" }
+truce-au = { git = "https://github.com/truce-audio/truce", tag = "v0.18.4", optional = true }
 truce-clap = { git = "https://github.com/truce-audio/truce", tag = "v0.18.4", optional = true }
 truce-vst3 = { git = "https://github.com/truce-audio/truce", tag = "v0.18.4", optional = true }
 truce-lv2 = { git = "https://github.com/truce-audio/truce", tag = "v0.18.4", optional = true }
